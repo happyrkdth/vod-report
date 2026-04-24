@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOD 주간 리포트 생성기</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<script>
+// datalabels는 기본 전역 등록 안 함 — mkStackedBarLabeled에서만 사용
+Chart.register(ChartDataLabels);
+// 전역 기본값: datalabels 비활성화 (개별 차트에서만 켜기)
+Chart.defaults.plugins.datalabels = { display: false };
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0f14;--sur:#161920;--sur2:#1e2230;--bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.13);
+  --acc:#4f8ef7;--kbs:#e85d4a;--mbc:#4caf7d;--sbs:#f0b429;--ppv:#a78bfa;--km:#38bdf8;
+  --tx:#e8eaf0;--tx2:#9299a8;--tx3:#5a6170;--up:#4caf7d;--r:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'Noto Sans KR',sans-serif;font-size:13px;min-height:100vh}
+
+/* ── UPLOAD ── */
+#upload-zone{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px}
+.logo-tag{font-size:11px;font-family:'DM Mono',monospace;letter-spacing:.2em;color:var(--tx3);margin-bottom:36px}
+.hero{font-size:clamp(28px,4.5vw,46px);font-weight:900;line-height:1.1;text-align:center;margin-bottom:10px}
+.hero span{color:var(--acc)}
+.hero-sub{color:var(--tx2);font-size:14px;text-align:center;margin-bottom:44px;line-height:1.7}
+.file-group{width:100%;max-width:920px;margin-bottom:16px}
+.grp-label{font-size:10px;font-family:'DM Mono',monospace;letter-spacing:.15em;margin-bottom:8px}
+.grp-req{color:var(--acc)}.grp-opt{color:var(--tx3)}
+.fg3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.fg2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;max-width:620px;margin:0 auto}
+.fc{background:var(--sur);border:1.5px dashed var(--bd2);border-radius:var(--r);padding:18px 14px;text-align:center;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
+.fc:hover{border-color:var(--acc);background:rgba(79,142,247,.04)}
+.fc.loaded{border-style:solid;border-color:var(--up);background:rgba(76,175,125,.05)}
+.fc.opt-loaded{border-style:solid;border-color:var(--ppv);background:rgba(167,139,250,.05)}
+.fc input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.fc-ico{font-size:20px;margin-bottom:6px}
+.fc-lbl{font-size:12px;font-weight:700;margin-bottom:2px}
+.lkbs{color:var(--kbs)}.lmbc{color:var(--mbc)}.lsbs{color:var(--sbs)}.lppv{color:var(--ppv)}.lkm{color:var(--km)}
+.fc-hint{font-size:10px;color:var(--tx3)}
+.fc-fn{font-size:10px;margin-top:4px;font-family:'DM Mono',monospace;color:var(--up)}
+.fc.opt-loaded .fc-fn{color:var(--ppv)}
+.opt-note{font-size:11px;color:var(--tx3);text-align:center;margin-bottom:24px}
+.gen-btn{background:var(--acc);color:#fff;border:none;padding:14px 48px;border-radius:50px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;font-family:'Noto Sans KR',sans-serif;opacity:.4;pointer-events:none}
+.gen-btn.ready{opacity:1;pointer-events:auto;box-shadow:0 0 32px rgba(79,142,247,.3)}
+.gen-btn.ready:hover{background:#6ba3ff;transform:translateY(-2px)}
+
+/* ── LOADER ── */
+#loader{display:none;position:fixed;inset:0;background:var(--bg);z-index:300;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.ld-txt{font-family:'DM Mono',monospace;font-size:12px;color:var(--tx3);letter-spacing:.1em}
+.ld-bar{width:200px;height:2px;background:var(--sur2);border-radius:1px;overflow:hidden}
+.ld-fill{height:100%;background:var(--acc);width:0;transition:width .3s}
+
+/* ── REPORT NAV ── */
+#report{display:none}
+.rnav{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd);padding:0 28px;display:flex;align-items:center;gap:10px;height:46px}
+.rnav-logo{font-family:'DM Mono',monospace;font-size:10px;color:var(--tx3);letter-spacing:.12em;margin-right:auto}
+.rnav-period{font-size:11px;color:var(--tx2);font-family:'DM Mono',monospace}
+.rtab{background:none;border:1px solid var(--bd2);color:var(--tx2);padding:4px 12px;border-radius:20px;font-size:11px;cursor:pointer;transition:all .15s;font-family:'Noto Sans KR',sans-serif;white-space:nowrap}
+.rtab:hover,.rtab.active{border-color:var(--acc);color:var(--acc);background:rgba(79,142,247,.08)}
+.rnav-dl{background:var(--acc);color:#fff;border:none;padding:5px 14px;border-radius:20px;font-size:11px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-weight:600;white-space:nowrap}
+.rnav-dl:hover{background:#6ba3ff}
+.rnav-reset{background:none;border:1px solid var(--bd2);color:var(--tx3);padding:4px 10px;border-radius:20px;font-size:11px;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
+.rnav-reset:hover{border-color:#e85d4a;color:#e85d4a}
+
+/* ── PAGES ── */
+.rpage{display:none;max-width:1280px;margin:0 auto;padding:24px 28px 60px}
+.rpage.active{display:block}
+
+/* ── SECTION ── */
+.sec{margin-bottom:28px}
+.sec-hd{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
+.sec-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--acc);letter-spacing:.1em}
+.sec-title{font-size:15px;font-weight:700}
+.sec-sub{font-size:10px;color:var(--tx3);margin-left:auto}
+
+/* ── HEADLINE ── */
+.headline{background:var(--sur);border:1px solid var(--bd);border-left:3px solid var(--acc);border-radius:var(--r);padding:14px 20px;margin-bottom:10px}
+.hl-tag{font-size:9px;font-family:'DM Mono',monospace;letter-spacing:.15em;color:var(--acc);margin-bottom:5px}
+.hl-txt{font-size:13px;font-weight:500;line-height:1.6}
+
+/* ── SIGNALS ── */
+.sig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sig{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:14px}
+.sig-ico{font-size:16px;margin-bottom:6px}
+.sig-title{font-size:11px;font-weight:700;margin-bottom:4px}
+.sig-body{font-size:11px;color:var(--tx2);line-height:1.55}
+
+/* ── TWO-COL LAYOUT — chart left, table right ── */
+.two-col{display:grid;grid-template-columns:380px 1fr;gap:12px;align-items:start}
+.two-col-rev{display:grid;grid-template-columns:1fr 380px;gap:12px;align-items:start}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:start}
+
+/* ── METRIC STRIP ── */
+.metric-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.mc{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:14px}
+.mc-label{font-size:10px;color:var(--tx3);margin-bottom:5px;letter-spacing:.03em}
+.mc-val{font-size:22px;font-weight:900;font-family:'DM Mono',monospace;margin-bottom:3px;line-height:1}
+.mc-sub{font-size:10px;color:var(--tx2)}
+
+/* ── SHARE BARS ── */
+.share-box{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:16px}
+.srow{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.srow:last-child{margin-bottom:0}
+.sbs-nm{font-weight:700;font-size:11px;width:30px}
+.sbar-bg{flex:1;height:7px;background:var(--sur2);border-radius:4px;overflow:hidden}
+.sbar-fill{height:100%;border-radius:4px;transition:width .9s cubic-bezier(.16,1,.3,1)}
+.spct{font-family:'DM Mono',monospace;font-size:11px;width:44px;text-align:right}
+.ssub{font-size:10px;color:var(--tx3);width:100px;text-align:right}
+
+/* ── CHART BOX ── */
+.chart-box{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:14px}
+.chart-lbl{font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:8px}
+/* canvas는 반드시 이 wrapper 안에서만 크기를 가짐 */
+.chart-wrap{position:relative;width:100%;overflow:hidden}
+.chart-wrap canvas{position:absolute;top:0;left:0;width:100%!important;height:100%!important}
+
+/* ── SCROLLABLE TABLE ── */
+.tbl-wrap{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+.tbl-scroll{overflow-y:auto}
+.tbl-scroll::-webkit-scrollbar{width:4px}
+.tbl-scroll::-webkit-scrollbar-track{background:var(--sur2)}
+.tbl-scroll::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px}
+table{width:100%;border-collapse:collapse}
+th{background:var(--sur2);font-size:10px;font-weight:600;color:var(--tx3);letter-spacing:.05em;padding:7px 10px;text-align:left;border-bottom:1px solid var(--bd2);position:sticky;top:0;z-index:1}
+td{padding:7px 10px;font-size:11px;border-bottom:1px solid var(--bd)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.rn{font-family:'DM Mono',monospace;font-size:10px;color:var(--tx3)}
+.rn.t3{color:var(--acc);font-weight:700}
+.badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:700}
+.bkbs{background:rgba(232,93,74,.15);color:var(--kbs)}
+.bmbc{background:rgba(76,175,125,.15);color:var(--mbc)}
+.bsbs{background:rgba(240,180,41,.15);color:var(--sbs)}
+.bnew{background:rgba(79,142,247,.12);color:var(--acc)}
+.bold{background:rgba(240,180,41,.1);color:var(--sbs)}
+.nc{font-family:'DM Mono',monospace;font-size:11px;text-align:right}
+
+/* ── HEALTH GRID ── */
+.health-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.hc{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:12px}
+.hc-st{font-size:8px;font-family:'DM Mono',monospace;letter-spacing:.1em;margin-bottom:5px}
+.s-rising{color:var(--up)}.s-stable{color:var(--acc)}.s-flag{color:var(--sbs)}.s-old{color:var(--ppv)}
+.hc-name{font-size:12px;font-weight:700;margin-bottom:2px}
+.hc-val{font-size:10px;color:var(--tx2)}
+.mbar{height:2px;background:var(--sur2);border-radius:1px;margin-top:7px;overflow:hidden}
+.mbar-f{height:100%;border-radius:1px}
+
+/* ── PRINT ── */
+@media print{
+  @page{
+    size: A4 portrait;
+    margin: 6mm 7mm 6mm 7mm;
+  }
+
+  /* ── 숨김 처리 ── */
+  .rnav, #upload-zone, #loader { display:none!important }
+  #report { display:block!important }
+  .rpage { display:none!important }
+  #p-jsp { display:block!important; padding:0!important; max-width:100%!important }
+
+  /* ── PDF 헤더 (인쇄 시에만 표시) ── */
+  .pdf-header { display:block!important; margin-bottom:5px }
+  .pdf-title { font-size:14px; font-weight:900; color:#111; letter-spacing:.02em }
+  .pdf-sub { font-size:8px; color:#666; margin-top:2px }
+  .pdf-line { border-top:2px solid #222; margin-top:4px }
+
+  /* ── 기본 색상·폰트 ── */
+  body { background:#fff!important; color:#111!important; font-size:8px!important; line-height:1.25!important }
+  * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important }
+
+  /* ── 섹션 간격 ── */
+  #p-jsp > .sec { margin-bottom:4px!important; page-break-inside:avoid!important }
+  .sec-hd { margin-bottom:3px!important }
+  .sec-num { font-size:8px!important }
+  .sec-title { font-size:10px!important; font-weight:700!important }
+
+  /* ── 헤드라인·시그널 ── */
+  .headline { padding:4px 8px!important; margin-bottom:3px!important; background:#f5f5f5!important; border-left:3px solid #333!important; border:0.5px solid #ddd!important }
+  .hl-tag { font-size:7px!important; color:#666!important }
+  .hl-txt { font-size:8.5px!important; color:#111!important; line-height:1.35!important }
+  .sig-grid { gap:3px!important }
+  .sig { padding:4px 6px!important; background:#f5f5f5!important; border:0.5px solid #ddd!important }
+  .sig-ico { font-size:10px!important; margin-bottom:2px!important }
+  .sig-title { font-size:8px!important; font-weight:700!important; margin-bottom:1px!important }
+  .sig-body { font-size:7px!important; color:#555!important }
+
+  /* ── 메트릭 카드 ── */
+  .metric-strip { gap:3px!important; margin-bottom:4px!important }
+  .mc { padding:3px 6px!important; background:#f5f5f5!important; border:0.5px solid #ddd!important }
+  .mc-label { font-size:7px!important; color:#666!important; margin-bottom:2px!important }
+  .mc-val { font-size:13px!important; font-weight:900!important; margin-bottom:0!important; line-height:1.1!important }
+  .mc-sub { font-size:7px!important; color:#666!important }
+
+  /* ── 점유율 바 ── */
+  .share-box { padding:5px 7px!important; background:#f5f5f5!important; border:0.5px solid #ddd!important }
+  .srow { margin-bottom:3px!important }
+  .sbar-bg { height:4px!important; background:#e0e0e0!important }
+  .sbs-nm { font-size:8px!important; width:26px!important }
+  .spct { font-size:8px!important }
+  .ssub { display:none!important }
+
+  /* ── 3열 차트 레이아웃 ── */
+  #p-jsp [style*="grid-template-columns:200px"] {
+    grid-template-columns: 150px 1fr 1fr!important;
+    gap:5px!important;
+  }
+
+  /* ── 차트 깨짐 완전 방지 ── */
+  .chart-box { padding:4px 6px!important; background:#f5f5f5!important; border:0.5px solid #ddd!important }
+  .chart-lbl { font-size:7px!important; margin-bottom:3px!important; color:#555!important }
+  .chart-wrap {
+    position: relative!important;
+    overflow: hidden!important;
+    display: block!important;
+    width: 100%!important;
+  }
+  .chart-wrap canvas {
+    position: static!important;
+    display: block!important;
+    width: 100%!important;
+    height: auto!important;
+    max-height: 100%!important;
+  }
+  /* 차트 높이 인쇄용 재지정 */
+  .chart-wrap[style*="140px"] { height:62px!important }
+  .chart-wrap[style*="130px"] { height:58px!important }
+  .chart-wrap[style*="200px"] { height:62px!important }
+  .chart-wrap[style*="150px"] { height:62px!important }
+
+  /* ── 테이블 ── */
+  .tbl-wrap { background:#fff!important; border:0.5px solid #ddd!important }
+  .tbl-scroll { max-height:none!important; overflow:visible!important }
+  thead { display:table-header-group!important }
+  th { padding:2px 4px!important; font-size:7.5px!important; background:#f0f0f0!important; color:#333!important; border-bottom:1px solid #ccc!important }
+  td { padding:2px 4px!important; font-size:7.5px!important; border-bottom:0.5px solid #eee!important; color:#111!important }
+  .rn { color:#999!important }
+  .rn.t3 { color:#1a56c4!important }
+  .badge { padding:1px 4px!important; font-size:6.5px!important }
+  .nc { font-size:7.5px!important }
+  /* TOP20 전체 표시 */
+  #p-jsp table tbody tr { display:table-row!important }
+}
+
+.pdf-header{ display:none }
+/* ── 통합 드롭존 ── */
+.dropzone-unified{
+  width:100%;max-width:920px;
+  background:var(--sur);
+  border:2px dashed var(--bd2);
+  border-radius:var(--r);
+  padding:20px 24px 16px;
+  transition:all .18s;
+  cursor:default;
+}
+.dropzone-unified.dragging{
+  border-color:var(--acc);
+  background:rgba(79,142,247,.05);
+  box-shadow:0 0 0 4px rgba(79,142,247,.15);
+}
+.dzu-inner{
+  display:flex;flex-direction:column;align-items:center;
+  padding:16px 0 14px;cursor:pointer;
+}
+.dzu-inner:hover .dzu-icon{ transform:scale(1.1) }
+.dzu-icon{ font-size:32px;margin-bottom:8px;transition:transform .15s }
+.dzu-title{ font-size:14px;font-weight:700;margin-bottom:4px }
+.dzu-sub{ font-size:12px;color:var(--tx2);text-align:center;line-height:1.6 }
+.dzu-sub span{ font-size:11px;color:var(--tx3) }
+/* 파일 칩 행 */
+.dzu-chips{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:8px;
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid var(--bd);
+}
+.dzu-chip{
+  background:var(--sur2);
+  border:1px solid var(--bd2);
+  border-radius:6px;
+  padding:8px 10px;
+  display:flex;flex-direction:column;gap:3px;
+  transition:all .15s;
+}
+.dzu-chip.done{ border-color:var(--up);background:rgba(76,175,125,.08) }
+.dzu-chip.opt{ border-style:dashed }
+.chip-bs{
+  font-size:10px;font-weight:700;font-family:'DM Mono',monospace;
+  padding:1px 6px;border-radius:3px;display:inline-block;width:fit-content;
+}
+.chip-bs.kbs{ background:rgba(232,93,74,.15);color:var(--kbs) }
+.chip-bs.mbc{ background:rgba(76,175,125,.15);color:var(--mbc) }
+.chip-bs.sbs{ background:rgba(240,180,41,.15);color:var(--sbs) }
+.chip-bs.ppv{ background:rgba(167,139,250,.15);color:var(--ppv) }
+.chip-bs.km{ background:rgba(56,189,248,.15);color:var(--km) }
+.chip-label{ font-size:10px;color:var(--tx2) }
+.chip-status{ font-size:9px;color:var(--tx3);font-family:'DM Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.dzu-chip.done .chip-status{ color:var(--up) }
+
+
+/* 드래그앤드롭 피드백 */
+#drop-area.drag-over-all{ outline:2px dashed var(--acc); outline-offset:6px; border-radius:10px }
+.fc.drag-hover{ border-color:var(--acc)!important; background:rgba(79,142,247,.1)!important; transform:scale(1.02); transition:all .15s }
+
+@media(max-width:900px){
+  .two-col,.two-col-rev,.three-col{grid-template-columns:1fr}
+  .metric-strip{grid-template-columns:repeat(2,1fr)}
+  .sig-grid{grid-template-columns:1fr}
+  .health-grid{grid-template-columns:repeat(2,1fr)}
+  .rpage{padding:16px 12px 50px}
+  .fg3{grid-template-columns:1fr}
+  .fg2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="ld-txt" id="ld-msg">파싱 중...</div>
+  <div class="ld-bar"><div class="ld-fill" id="ld-fill"></div></div>
+</div>
+
+<!-- ═══ UPLOAD ═══ -->
+<div id="upload-zone">
+  <div class="logo-tag">KBS · VOD WEEKLY ANALYTICS</div>
+  <h1 class="hero">주간 리포트<br><span>자동 생성기</span></h1>
+  <p class="hero-sub">파일 업로드 → 즉시 분석 리포트 생성<br>PDF 저장 · 팀 공유 가능</p>
+
+  <!-- 드래그앤드롭: 전체 영역 + 개별 카드 클릭 모두 지원 -->
+  <!-- 통합 드롭존: 5개 파일 한꺼번에 드래그앤드롭 -->
+  <div class="dropzone-unified" id="drop-area">
+    <input type="file" id="file-input-main" accept=".xlsx,.xls" multiple style="display:none" onchange="handleFiles(event.target.files)">
+    <div class="dzu-inner" onclick="document.getElementById('file-input-main').click()">
+      <div class="dzu-icon">📂</div>
+      <div class="dzu-title">파일을 여기에 드래그하거나 클릭해서 선택</div>
+      <div class="dzu-sub">KBS·MBC·SBS 지상파월정액 + KBS 주간 매출 자료 + KBS 월정액<br>
+        <span>파일명으로 자동 분류 · 최대 5개 동시 업로드</span></div>
+    </div>
+    <!-- 업로드된 파일 상태 칩 -->
+    <div class="dzu-chips" id="dzu-chips">
+      <div class="dzu-chip" id="chip-kbs"><span class="chip-bs kbs">KBS</span><span class="chip-label">지상파월정액</span><span class="chip-status" id="cs-kbs">대기중</span></div>
+      <div class="dzu-chip" id="chip-mbc"><span class="chip-bs mbc">MBC</span><span class="chip-label">지상파월정액</span><span class="chip-status" id="cs-mbc">대기중</span></div>
+      <div class="dzu-chip" id="chip-sbs"><span class="chip-bs sbs">SBS</span><span class="chip-label">지상파월정액</span><span class="chip-status" id="cs-sbs">대기중</span></div>
+      <div class="dzu-chip" id="chip-ppv"><span class="chip-bs ppv">PPV</span><span class="chip-label">주간 매출</span><span class="chip-status" id="cs-ppv">선택사항</span></div>
+      <div class="dzu-chip" id="chip-km"><span class="chip-bs km">KBS</span><span class="chip-label">월정액</span><span class="chip-status" id="cs-km">선택사항</span></div>
+    </div>
+  </div>
+    <div class="sec-note" style="max-width:920px;margin-top:8px">🔒 업로드한 파일은 <b>브라우저 내 메모리에서만</b> 처리되며 외부 서버로 전송되지 않습니다.</div>
+  <button class="gen-btn" id="gen-btn" onclick="generateReport()">리포트 생성하기 →</button>
+</div>
+
+<!-- ═══ REPORT ═══ -->
+<div id="report">
+  <nav class="rnav">
+    <span class="rnav-logo">VOD WEEKLY</span>
+    <span class="rnav-period" id="rnav-period"></span>
+    <button class="rtab active" id="tab-jsp" onclick="showPage('p-jsp',this)">지상파 월정액</button>
+    <button class="rtab" id="tab-km" onclick="showPage('p-km',this)">KBS 월정액</button>
+    <button class="rtab" id="tab-ppv" style="display:none" onclick="showPage('p-ppv',this)">PPV</button>
+    <button class="rtab" id="tab-sales" onclick="showPage('p-sales',this)">세일즈 제언</button>
+    <button class="rnav-dl" onclick="printJsp()">📄 PDF 저장</button>
+    <button class="rnav-reset" onclick="resetApp()">← 새 파일</button>
+  </nav>
+  <div class="rpage active" id="p-jsp"></div>
+  <div class="rpage" id="p-km"></div>
+  <div class="rpage" id="p-ppv"></div>
+  <div class="rpage" id="p-sales"></div>
+</div>
+
+<script>
+const S={kbs:null,mbc:null,sbs:null,ppv:null,km:null};
+const CHS={};
+
+// 파일명으로 종류 자동 구분
+function classifyFile(name){
+  const n=name.toLowerCase();
+  if(n.includes('kbs') && n.includes('월정액') && !n.includes('지상파') && !n.includes('매출')) return 'km';
+  if(n.includes('매출') || n.includes('ppv') || n.includes('단건')) return 'ppv';
+  if(n.includes('kbs') && (n.includes('지상파') || n.includes('이용자료'))) return 'kbs';
+  if(n.includes('mbc') && (n.includes('지상파') || n.includes('이용자료'))) return 'mbc';
+  if(n.includes('sbs') && (n.includes('지상파') || n.includes('이용자료'))) return 'sbs';
+  return null;
+}
+
+const KEY_LABELS={
+  kbs:{label:'KBS 지상파', cls:'chip-kbs', ico:'📺'},
+  mbc:{label:'MBC 지상파', cls:'chip-mbc', ico:'🎬'},
+  sbs:{label:'SBS 지상파', cls:'chip-sbs', ico:'🎭'},
+  ppv:{label:'PPV 매출', cls:'chip-ppv', ico:'🎯'},
+  km:{label:'KBS 월정액', cls:'chip-km', ico:'⭐'},
+};
+
+function renderChips(){
+  ['kbs','mbc','sbs','ppv','km'].forEach(key=>{
+    const chip=document.getElementById('chip-'+key);
+    const cs=document.getElementById('cs-'+key);
+    if(!chip||!cs)return;
+    if(S[key]){
+      const name=S[key].name;
+      cs.textContent=name.length>16?name.slice(0,14)+'…':name;
+      chip.classList.add('done');
+      chip.classList.remove('opt');
+    } else {
+      cs.textContent=(key==='ppv'||key==='km')?'선택사항':'대기중';
+      chip.classList.remove('done');
+      if(key==='ppv'||key==='km') chip.classList.add('opt');
+    }
+  });
+}
+
+function handleFiles(files){
+  const unknowns=[];
+  Array.from(files).forEach(f=>{
+    const key=classifyFile(f.name);
+    if(!key){unknowns.push(f.name);return;}
+    const rd=new FileReader();
+    rd.onload=ev=>{
+      const wb=XLSX.read(ev.target.result,{type:'array'});
+      const sheetIdx=key==='km'?1:0;
+      const ws=wb.Sheets[wb.SheetNames[Math.min(sheetIdx,wb.SheetNames.length-1)]];
+      S[key]={name:f.name,raw:XLSX.utils.sheet_to_json(ws,{header:1,defval:''})};
+      renderChips();
+  ['ppv','km'].forEach(k=>{const c=document.getElementById('chip-'+k);if(c)c.classList.add('opt');});
+      if(S.kbs&&S.mbc&&S.sbs)document.getElementById('gen-btn').classList.add('ready');
+    };
+    rd.readAsArrayBuffer(f);
+  });
+  if(unknowns.length>0){
+    alert('파일명으로 종류를 구분하지 못한 파일이 있어요:\n'+unknowns.join('\n')+'\n\n파일명에 KBS/MBC/SBS와 지상파·이용자료·매출·월정액 등의 키워드가 포함되어야 합니다.');
+  }
+}
+
+// ── 드래그앤드롭: 전체 영역 + 각 카드 개별 피드백 ──
+document.addEventListener('DOMContentLoaded',()=>{
+  const da=document.getElementById('drop-area');
+  if(!da)return;
+  // 옵션 칩 초기 표시
+  ['ppv','km'].forEach(k=>{
+    const c=document.getElementById('chip-'+k);
+    if(c)c.classList.add('opt');
+  });
+  let dragCounter=0;
+  da.addEventListener('dragenter',e=>{e.preventDefault();dragCounter++;da.classList.add('dragging');});
+  da.addEventListener('dragover',e=>{e.preventDefault();});
+  da.addEventListener('dragleave',e=>{dragCounter--;if(dragCounter<=0){dragCounter=0;da.classList.remove('dragging');}});
+  da.addEventListener('drop',e=>{
+    e.preventDefault();dragCounter=0;da.classList.remove('dragging');
+    handleFiles(e.dataTransfer.files);
+  });
+});
+
+function showPage(id,btn){
+  document.querySelectorAll('.rpage').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');btn.classList.add('active');
+}
+
+function setLoader(msg,pct){document.getElementById('ld-msg').textContent=msg;document.getElementById('ld-fill').style.width=pct+'%';}
+function tick(){return new Promise(r=>setTimeout(r,50));}
+const nn=v=>Math.round(v).toLocaleString();
+const pp=v=>v.toFixed(2)+'%';
+const fmt=d=>`${d.slice(0,4)}.${d.slice(4,6)}.${d.slice(6,8)}`;
+const sm=rows=>rows.reduce((s,r)=>s+(r.views||0),0);
+
+function parseTppm(raw,bs){
+  const rows=[];
+  for(let i=2;i<raw.length;i++){
+    const r=raw[i];
+    if(!r[4]||String(r[4]).includes('시리즈명'))continue;
+    const v=parseFloat(r[8])||0,d=String(r[0]||'').replace(/\D/g,'').slice(0,8);
+    const air=String(r[6]||'').replace(/\D/g,''),ay=air.length>=4?parseInt(air.slice(0,4)):null;
+    if(v>0&&d.length===8)rows.push({bs,date:d,title:String(r[4]).trim(),views:v,airyear:ay});
+  }
+  return rows;
+}
+function parsePpv(raw){
+  const rows=[];
+  for(let i=2;i<raw.length;i++){
+    const r=raw[i];
+    if(!r[5]||String(r[5]).includes('시리즈명'))continue;
+    const b=parseFloat(r[8])||0,rv=parseFloat(r[9])||0;
+    const d=String(r[0]||'').replace(/\D/g,'').slice(0,8);
+    const air=String(r[7]||'').replace(/\D/g,''),ay=air.length>=4?parseInt(air.slice(0,4)):null;
+    if(b>0&&d.length===8)rows.push({date:d,title:String(r[5]).trim(),buys:b,rev:rv,airyear:ay});
+  }
+  return rows;
+}
+function parseKm(raw){
+  // 회차별 행을 시리즈명 기준으로 합산
+  const map={};
+  for(let i=4;i<raw.length;i++){
+    const r=raw[i];
+    if(!r[2]||String(r[2]).includes('\uB300\uD45C\uC81C\uBAA9'))continue;
+    const v=parseFloat(r[6])||0,t=String(r[2]).trim();
+    if(v>0&&t) map[t]=(map[t]||0)+v;
+  }
+  return Object.entries(map)
+    .map(([title,views])=>({title,views}))
+    .sort((a,b)=>b.views-a.views);
+}
+function groupBy(arr,keyFn,init,merge){
+  const m={};
+  arr.forEach(r=>{const k=keyFn(r);if(!m[k])m[k]={...init};merge(m[k],r);});
+  return m;
+}
+
+async function generateReport(){
+  document.getElementById('loader').style.display='flex';
+  Object.values(CHS).forEach(c=>{try{c.destroy();}catch(e){}});
+  await tick();setLoader('KBS 파싱...',15);await tick();
+  const kbs=parseTppm(S.kbs.raw,'KBS');
+  setLoader('MBC 파싱...',32);await tick();const mbc=parseTppm(S.mbc.raw,'MBC');
+  setLoader('SBS 파싱...',48);await tick();const sbs=parseTppm(S.sbs.raw,'SBS');
+  let ppv=null,km=null;
+  if(S.ppv){setLoader('PPV 파싱...',62);await tick();ppv=parsePpv(S.ppv.raw);}
+  if(S.km){setLoader('KBS월정액 파싱...',75);await tick();km=parseKm(S.km.raw);}
+  setLoader('계산 중...',90);await tick();
+  buildAll(kbs,mbc,sbs,ppv,km);
+  setLoader('완료!',100);await new Promise(r=>setTimeout(r,280));
+  document.getElementById('loader').style.display='none';
+  document.getElementById('upload-zone').style.display='none';
+  if(ppv||km)document.getElementById('tab-ppv').style.display='inline-block';
+  document.getElementById('report').style.display='block';
+  window.scrollTo(0,0);
+}
+
+function buildAll(kbs,mbc,sbs,ppv,km){
+  const all=[...kbs,...mbc,...sbs];
+  const totals={KBS:sm(kbs),MBC:sm(mbc),SBS:sm(sbs)};
+  const totalAll=totals.KBS+totals.MBC+totals.SBS;
+  const shares={KBS:totals.KBS/totalAll*100,MBC:totals.MBC/totalAll*100,SBS:totals.SBS/totalAll*100};
+  const dates=[...new Set(all.map(r=>r.date))].sort();
+  const period=`${fmt(dates[0])} ~ ${fmt(dates[dates.length-1])}`;
+  document.getElementById('rnav-period').textContent=period;
+
+  const titleMap=groupBy(all,r=>r.bs+'||'+r.title,{bs:'',title:'',views:0,airyear:null},
+    (a,r)=>{a.bs=r.bs;a.title=r.title;a.views+=r.views;if(!a.airyear)a.airyear=r.airyear;});
+  const top20=Object.values(titleMap).sort((a,b)=>b.views-a.views).slice(0,20);
+  const kbsMap=groupBy(kbs,r=>r.title,{title:'',views:0,airyear:null},
+    (a,r)=>{a.title=r.title;a.views+=r.views;if(!a.airyear)a.airyear=r.airyear;});
+  const kbsTop=Object.values(kbsMap).sort((a,b)=>b.views-a.views);
+
+  const daily={KBS:{},MBC:{},SBS:{}};
+  [{bs:'KBS',rows:kbs},{bs:'MBC',rows:mbc},{bs:'SBS',rows:sbs}]
+    .forEach(({bs,rows})=>rows.forEach(r=>daily[bs][r.date]=(daily[bs][r.date]||0)+r.views));
+  const no=rows=>{let n=0,o=0;rows.forEach(r=>r.airyear&&r.airyear<=2022?o+=r.views:n+=r.views);return{new:n,old:o};};
+  const kNO=no(kbs),mNO=no(mbc),sNO=no(sbs);
+
+  document.getElementById('p-jsp').innerHTML=renderJsp(totalAll,totals,shares,kNO,mNO,sNO,top20,dates,daily,period);
+  document.getElementById('p-km').innerHTML=renderKm(km,kbsTop,totals,totalAll);
+  if(ppv){ document.getElementById('tab-ppv').style.display='inline-block'; document.getElementById('p-ppv').innerHTML=renderPpv(ppv,kbsTop,km); }
+  document.getElementById('p-sales').innerHTML=renderSalesPage(kbsTop,totals,totalAll,kNO,mNO,shares,top20,ppv,km);
+
+  setTimeout(()=>{
+    /* 지상파 월정액 차트 */
+    mkLine('ch-daily',dates.map(d=>`${d.slice(4,6)}/${d.slice(6,8)}`),
+      [{label:'KBS',data:dates.map(d=>daily.KBS[d]||0),color:'#e85d4a'},
+       {label:'MBC',data:dates.map(d=>daily.MBC[d]||0),color:'#4caf7d'},
+       {label:'SBS',data:dates.map(d=>daily.SBS[d]||0),color:'#f0b429'}]);
+    mkGroupedBarAbsolute('ch-newold',
+      ['KBS 신작','MBC 신작','SBS 신작','KBS 구작','MBC 구작','SBS 구작'],
+      [kNO.new,mNO.new,sNO.new,kNO.old,mNO.old,sNO.old],
+      ['rgba(232,93,74,.85)','rgba(76,175,125,.85)','rgba(240,180,41,.85)',
+       'rgba(232,93,74,.3)','rgba(76,175,125,.3)','rgba(240,180,41,.3)']);
+    /* KBS 월정액 차트 */
+    if(km){
+      const t5=km.slice(0,5);
+      mkHBar('ch-km-top5',t5.map(p=>p.title.length>9?p.title.slice(0,9)+'…':p.title),t5.map(p=>p.views),'#38bdf8');
+    }
+    /* PPV 차트 */
+    if(ppv){
+      const pm={};ppv.forEach(r=>pm[r.title]=(pm[r.title]||0)+r.buys);
+      const pt=Object.entries(pm).sort((a,b)=>b[1]-a[1]).slice(0,8);
+      mkHBar('ch-ppv-top',pt.map(([t])=>t.length>9?t.slice(0,9)+'…':t),pt.map(([,v])=>v),'#a78bfa');
+      // 요일별 이용현황
+      const DOW=['일','월','화','수','목','금','토'];
+      const dowBuys=Array(7).fill(0);
+      ppv.forEach(r=>{
+        const d=r.date;if(!d||d.length<8)return;
+        // 날짜로 요일 계산
+        const dt=new Date(parseInt(d.slice(0,4)),parseInt(d.slice(4,6))-1,parseInt(d.slice(6,8)));
+        dowBuys[dt.getDay()]+=r.buys;
+      });
+      mkLine('ch-ppv-dow',DOW,[{label:'구매건수',data:dowBuys,color:'#a78bfa',fill:true}]);
+    }
+  },120);
+}
+
+/* ── CHART HELPERS ── */
+// chart-wrap div가 height를 고정 → canvas는 position:absolute로 100% 채움
+function mkLine(id,labels,datasets){
+  const c=document.getElementById(id);if(!c)return;
+  if(CHS[id])try{CHS[id].destroy();}catch(e){}
+  CHS[id]=new Chart(c,{type:'line',data:{labels,datasets:datasets.map(d=>({
+    label:d.label,data:d.data,borderColor:d.color,
+    backgroundColor:d.color+'22',
+    tension:.4,pointRadius:3,borderWidth:2,fill:d.fill||false
+  }))},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#9299a8',font:{size:10},boxWidth:10}}},
+    scales:{x:{ticks:{color:'#5a6170',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+            y:{ticks:{color:'#5a6170',font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'천':v},grid:{color:'rgba(255,255,255,.04)'}}}}});
+}
+function mkStackedBar(id,labels,newData,oldData){
+  const c=document.getElementById(id);if(!c)return;
+  if(CHS[id])try{CHS[id].destroy();}catch(e){}
+  CHS[id]=new Chart(c,{type:'bar',data:{labels,datasets:[
+    {label:'신작',data:newData,backgroundColor:['rgba(232,93,74,.8)','rgba(76,175,125,.8)','rgba(240,180,41,.8)'],borderRadius:3},
+    {label:'구작',data:oldData,backgroundColor:['rgba(232,93,74,.28)','rgba(76,175,125,.28)','rgba(240,180,41,.28)'],borderRadius:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#9299a8',font:{size:10},boxWidth:10}}},
+    scales:{x:{stacked:true,ticks:{color:'#5a6170',font:{size:11}},grid:{display:false}},
+            y:{stacked:true,max:100,ticks:{color:'#5a6170',font:{size:10},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,.04)'}}}}});
+}
+function mkHBar(id,labels,data,color){
+  const c=document.getElementById(id);if(!c)return;
+  if(CHS[id])try{CHS[id].destroy();}catch(e){}
+  CHS[id]=new Chart(c,{type:'bar',data:{labels,datasets:[{label:'시청건수',data,
+    backgroundColor:color,borderRadius:3}]},
+  options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+    plugins:{legend:{display:false}},
+    scales:{x:{ticks:{color:'#5a6170',font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'천':v},grid:{color:'rgba(255,255,255,.04)'}},
+            y:{ticks:{color:'#9299a8',font:{size:10}},grid:{display:false}}}}});
+}
+
+/* ── stacked bar with data labels ── */
+function mkStackedBarLabeled(id,labels,newPct,oldPct,newAbs,oldAbs){
+  const c=document.getElementById(id);if(!c)return;
+  if(CHS[id])try{CHS[id].destroy();}catch(e){}
+  CHS[id]=new Chart(c,{type:'bar',data:{labels,datasets:[
+    {label:'신작',data:newPct,backgroundColor:['rgba(232,93,74,.8)','rgba(76,175,125,.8)','rgba(240,180,41,.8)'],borderRadius:3,
+     datalabels:{anchor:'center',align:'center',formatter:(_,ctx)=>nn(newAbs[ctx.dataIndex]),color:'#fff',font:{size:9,weight:'bold'}}},
+    {label:'구작',data:oldPct,backgroundColor:['rgba(232,93,74,.28)','rgba(76,175,125,.28)','rgba(240,180,41,.28)'],borderRadius:3,
+     datalabels:{anchor:'center',align:'center',formatter:(_,ctx)=>nn(oldAbs[ctx.dataIndex]),color:'#ccc',font:{size:9}}},
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{labels:{color:'#9299a8',font:{size:10},boxWidth:10}},
+      tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%`}},
+      datalabels:{display:true}
+    },
+    scales:{
+      x:{stacked:true,ticks:{color:'#5a6170',font:{size:11}},grid:{display:false}},
+      y:{stacked:true,max:100,ticks:{color:'#5a6170',font:{size:10},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,.04)'}}
+    }
+  }});
+}
+
+/* ── grouped bar absolute ── */
+function mkGroupedBarAbsolute(id,labels,data,colors){
+  const c=document.getElementById(id);if(!c)return;
+  if(CHS[id])try{CHS[id].destroy();}catch(e){}
+  const total=data.reduce((s,v)=>s+v,0);
+  CHS[id]=new Chart(c,{type:'bar',
+    data:{
+      labels:['KBS','MBC','SBS'],
+      datasets:[
+        {label:'신작',data:[data[0],data[1],data[2]],
+         backgroundColor:[colors[0],colors[1],colors[2]],borderRadius:3,
+         datalabels:{display:true,anchor:'end',align:'top',
+           formatter:(v)=>v>0?[nn(v), (v/total*100).toFixed(1)+'%']:'',
+           color:'#9299a8',font:{size:8}}},
+        {label:'구작',data:[data[3],data[4],data[5]],
+         backgroundColor:[colors[3],colors[4],colors[5]],borderRadius:3,
+         datalabels:{display:true,anchor:'end',align:'top',
+           formatter:(v)=>v>0?[nn(v), (v/total*100).toFixed(1)+'%']:'',
+           color:'#5a6170',font:{size:8}}},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      layout:{padding:{top:28}},
+      plugins:{
+        legend:{labels:{color:'#9299a8',font:{size:10},boxWidth:10}},
+        datalabels:{display:true}
+      },
+      scales:{
+        x:{ticks:{color:'#5a6170',font:{size:11}},grid:{display:false}},
+        y:{ticks:{color:'#5a6170',font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'천':v},
+           grid:{color:'rgba(255,255,255,.04)'}}
+      }
+    }
+  });
+}
+
+/* ── RENDER: JSP (지상파 월정액) ── */function renderJsp(totalAll,totals,shares,kNO,mNO,sNO,top20,dates,daily,period){
+  const top1=top20[0],kbsTop1=top20.find(r=>r.bs==='KBS'),mbcTop1=top20.find(r=>r.bs==='MBC');
+  const kOldP=(kNO.old/totals.KBS*100).toFixed(1),mOldP=(mNO.old/totals.MBC*100).toFixed(1);
+  const dayTots=dates.map(d=>['KBS','MBC','SBS'].reduce((s,bs)=>s+(daily[bs][d]||0),0));
+  const mx=Math.max(...dayTots),mn=Math.min(...dayTots);
+  const hl=`이번 주 3사 합계 <b>${nn(totalAll)}건</b>. ${top1.bs} <b>"${top1.title}"</b> ${nn(top1.views)}건으로 전체 1위. KBS <b>${shares.KBS.toFixed(2)}%</b> · MBC <b>${shares.MBC.toFixed(2)}%</b> · SBS <b>${shares.SBS.toFixed(2)}%</b>. MBC 구작 비율 ${mOldP}%가 점유율 확대 주요 배경.`;
+  const sigs=[
+    {ico:'📊',title:`KBS↔MBC 1위 격차 ${nn(mbcTop1.views-kbsTop1.views)}건`,body:`KBS "${kbsTop1.title}" ${nn(kbsTop1.views)}건 vs MBC "${mbcTop1.title}" ${nn(mbcTop1.views)}건`},
+    {ico:'📚',title:`구작 KBS ${kOldP}% vs MBC ${mOldP}%`,body:`${(parseFloat(mOldP)-parseFloat(kOldP)).toFixed(1)}%p 격차. 라이브러리 큐레이션 강화 여지.`},
+    {ico:'📅',title:`일별 최대 ${nn(mx)} / 최소 ${nn(mn)}건`,body:`차이 ${((mx/mn-1)*100).toFixed(0)}%. 주말 방영 콘텐츠가 스파이크 주도.`},
+  ];
+  const t20=top20.map((r,i)=>`<tr>
+    <td><span class="rn ${i<3?'t3':''}">${String(i+1).padStart(2,'0')}</span></td>
+    <td><span class="badge b${r.bs.toLowerCase()}">${r.bs}</span></td>
+    <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title}</td>
+    <td><span class="badge ${r.airyear&&r.airyear<=2022?'bold':'bnew'}">${r.airyear&&r.airyear<=2022?'구':'신'}</span></td>
+    <td class="nc">${nn(r.views)}</td>
+    <td class="nc">${pp(r.views/totalAll*100)}</td>
+  </tr>`).join('');
+
+  return `
+  <!-- PDF 인쇄 시에만 보이는 헤더 -->
+  <div class="pdf-header">
+    <div class="pdf-title">주간 TV-VOD 이용현황</div>
+    <div class="pdf-sub">기준 기간: ${period} &nbsp;|&nbsp; 방송3사 지상파 통합월정액(PPM3) 기준 &nbsp;|&nbsp; SK Btv</div>
+    <div class="pdf-line"></div>
+  </div>
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-num">01 ·</span><span class="sec-title">이번 주 한 줄 요약</span></div>
+    <div class="headline"><div class="hl-tag">WEEKLY HEADLINE</div><div class="hl-txt">${hl}</div></div>
+    <div class="sig-grid">${sigs.map(s=>`<div class="sig"><div class="sig-ico">${s.ico}</div><div class="sig-title">${s.title}</div><div class="sig-body">${s.body}</div></div>`).join('')}</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-num">02 ·</span><span class="sec-title">방송사별 점유율</span></div>
+    <div class="metric-strip">
+      <div class="mc"><div class="mc-label">총 이용건수</div><div class="mc-val" style="color:var(--acc)">${nn(totalAll)}</div><div class="mc-sub">PPM3 기준</div></div>
+      <div class="mc"><div class="mc-label">KBS</div><div class="mc-val" style="color:var(--kbs)">${shares.KBS.toFixed(2)}%</div><div class="mc-sub">신 ${(kNO.new/totals.KBS*100).toFixed(1)}% / 구 ${kOldP}%</div></div>
+      <div class="mc"><div class="mc-label">MBC</div><div class="mc-val" style="color:var(--mbc)">${shares.MBC.toFixed(2)}%</div><div class="mc-sub">신 ${(mNO.new/totals.MBC*100).toFixed(1)}% / 구 ${mOldP}%</div></div>
+      <div class="mc"><div class="mc-label">SBS</div><div class="mc-val" style="color:var(--sbs)">${shares.SBS.toFixed(2)}%</div><div class="mc-sub">신 ${(sNO.new/totals.SBS*100).toFixed(1)}% / 구 ${(sNO.old/totals.SBS*100).toFixed(1)}%</div></div>
+    </div>
+    <!-- 3열: 점유율바 | 신구작 차트 | 일별 차트 -->
+    <div style="display:grid;grid-template-columns:200px 1fr 1fr;gap:10px;align-items:start">
+      <div class="share-box">
+        ${[['KBS',shares.KBS,'kbs',totals.KBS],['MBC',shares.MBC,'mbc',totals.MBC],['SBS',shares.SBS,'sbs',totals.SBS]].map(([bs,s,c,tv])=>`
+        <div class="srow"><span class="sbs-nm" style="color:var(--${c})">${bs}</span>
+          <div class="sbar-bg"><div class="sbar-fill" style="width:${s}%;background:var(--${c})"></div></div>
+          <span class="spct">${s.toFixed(2)}%</span></div>`).join('')}
+        <div style="margin-top:8px">${[['KBS',totals.KBS,'kbs'],['MBC',totals.MBC,'mbc'],['SBS',totals.SBS,'sbs']].map(([bs,v,c])=>`<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px"><span style="color:var(--${c});font-weight:700">${bs}</span><span style="color:var(--tx2)">${nn(v)}건</span></div>`).join('')}</div>
+      </div>
+      <div class="chart-box"><div class="chart-lbl">신작 / 구작 절대 건수</div><div class="chart-wrap" style="height:140px"><canvas id="ch-newold"></canvas></div></div>
+      <div class="chart-box"><div class="chart-lbl">3사 일별 시청건수 추이</div><div class="chart-wrap" style="height:140px"><canvas id="ch-daily"></canvas></div></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-num">03 ·</span><span class="sec-title">방송3사 통합월정액 VOD 시청 현황</span><span class="sec-sub">전체 시청건수 기준</span></div>
+    <div class="tbl-wrap"><div class="tbl-scroll" style="max-height:460px">
+      <table><thead><tr><th>순위</th><th>방송사</th><th>프로그램</th><th>분류</th><th style="text-align:right">시청건수</th><th style="text-align:right">점유율</th></tr></thead>
+      <tbody>${t20}</tbody></table>
+    </div></div>
+  </div>`;
+}
+
+/* ── RENDER: KBS 월정액 ── */
+function renderKm(km,kbsTop,totals,totalAll){
+  if(!km||km.length===0) return `
+  <div class="sec"><div class="sec-hd"><span class="sec-num">·</span><span class="sec-title">KBS 월정액</span></div>
+  <div class="headline"><div class="hl-txt" style="color:var(--tx3)">KBS 월정액 파일이 업로드되지 않았습니다.</div></div></div>`;
+
+  const totalKm=km.reduce((s,r)=>s+r.views,0);
+  const rows=km.slice(0,20).map((r,i)=>`<tr>
+    <td><span class="rn ${i<3?'t3':''}">${String(i+1).padStart(2,'0')}</span></td>
+    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title}</td>
+    <td class="nc">${nn(r.views)}</td>
+    <td class="nc">${pp(r.views/totalKm*100)}</td>
+  </tr>`).join('');
+
+  const top5=km.slice(0,5);
+
+  return `
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-num">01 ·</span><span class="sec-title">KBS 월정액 내 콘텐츠 이용현황</span><span class="sec-sub">시청건수 기준 · 시리즈 합산</span></div>
+    <div class="metric-strip" style="grid-template-columns:repeat(2,1fr)">
+      <div class="mc"><div class="mc-label">총 시청건수</div><div class="mc-val" style="color:var(--km)">${nn(totalKm)}</div><div class="mc-sub">KBS 월정액 기준</div></div>
+      <div class="mc"><div class="mc-label">1위 콘텐츠</div><div class="mc-val" style="font-size:16px;color:var(--km)">${km[0].title}</div><div class="mc-sub">${nn(km[0].views)}건</div></div>
+    </div>
+    <div class="two-col-rev">
+      <div class="tbl-wrap"><div class="tbl-scroll" style="max-height:480px">
+        <table><thead><tr><th>순위</th><th>프로그램</th><th style="text-align:right">시청건수</th><th style="text-align:right">점유율</th></tr></thead>
+        <tbody>${rows}</tbody></table>
+      </div></div>
+      <div class="chart-box"><div class="chart-lbl">KBS 월정액 TOP 5</div><div class="chart-wrap" style="height:220px"><canvas id="ch-km-top5"></canvas></div></div>
+    </div>
+  </div>`;
+}
+
+/* ── RENDER: PPV ── */
+function renderPpv(ppv,kbsTop,km){
+  if(!ppv||ppv.length===0) return '';
+  // 콘텐츠별 합산
+  const pm={};
+  ppv.forEach(r=>{
+    if(!pm[r.title])pm[r.title]={title:r.title,buys:0,rev:0,airyear:r.airyear};
+    pm[r.title].buys+=r.buys; pm[r.title].rev+=r.rev;
+  });
+  const pt=Object.values(pm).sort((a,b)=>b.buys-a.buys);
+  const tb=pt.reduce((s,r)=>s+r.buys,0);
+  const tr=pt.reduce((s,r)=>s+r.rev,0);
+  const oldB=pt.filter(r=>r.airyear&&r.airyear<=2022).reduce((s,r)=>s+r.buys,0);
+
+  // 지상파 월정액 조회용 맵
+  const jspMap={};
+  kbsTop.forEach(r=>jspMap[r.title.replace(/\s/g,'')]=r.views);
+  const lookupJsp=title=>{
+    const nk=title.replace(/\s/g,'');
+    return jspMap[nk]||Object.entries(jspMap).find(([k])=>k.includes(nk.slice(0,5)))?.[1]||0;
+  };
+
+  // KBS 월정액 조회용 맵
+  const kmMap={};
+  if(km) km.forEach(r=>kmMap[r.title.replace(/\s/g,'')]=r.views);
+  const lookupKm=title=>{
+    const nk=title.replace(/\s/g,'');
+    return kmMap[nk]||Object.entries(kmMap).find(([k])=>k.includes(nk.slice(0,5)))?.[1]||0;
+  };
+
+  // 상위 콘텐츠 테이블
+  const topRows=pt.slice(0,15).map((r,i)=>`<tr>
+    <td><span class="rn ${i<3?'t3':''}">${String(i+1).padStart(2,'0')}</span></td>
+    <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title}</td>
+    <td><span class="badge ${r.airyear&&r.airyear<=2022?'bold':'bnew'}">${r.airyear&&r.airyear<=2022?'구':'신'}</span></td>
+    <td class="nc">${nn(r.buys)}</td>
+    <td class="nc">${pp(r.buys/tb*100)}</td>
+    <td class="nc">${nn(r.rev)}원</td>
+  </tr>`).join('');
+
+  // 3사 비교 테이블 (PPV / KBS월정액 / 지상파월정액)
+  const compareRows=pt.slice(0,12).map((r,i)=>{
+    const jspV=lookupJsp(r.title);
+    const kmV=lookupKm(r.title);
+    return `<tr>
+      <td><span class="rn ${i<3?'t3':''}">${String(i+1).padStart(2,'0')}</span></td>
+      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title}</td>
+      <td class="nc" style="color:var(--ppv);font-weight:600">${nn(r.buys)}</td>
+      <td class="nc" style="color:var(--km)">${kmV>0?nn(kmV):'—'}</td>
+      <td class="nc" style="color:var(--kbs)">${jspV>0?nn(jspV):'—'}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-num">01 ·</span><span class="sec-title">PPV 단건 구매 현황</span></div>
+    <div class="metric-strip" style="grid-template-columns:repeat(4,1fr)">
+      <div class="mc"><div class="mc-label">총 구매건수</div><div class="mc-val" style="color:var(--ppv)">${nn(tb)}</div><div class="mc-sub">KBS 콘텐츠</div></div>
+      <div class="mc"><div class="mc-label">추정 매출</div><div class="mc-val" style="color:var(--ppv);font-size:18px">${nn(tr)}원</div><div class="mc-sub">편당 2,000~2,500원</div></div>
+      <div class="mc"><div class="mc-label">구작 구매 비율</div><div class="mc-val" style="color:var(--ppv)">${pp(oldB/tb*100)}</div><div class="mc-sub">2022년 이전 방영</div></div>
+      <div class="mc"><div class="mc-label">1위 콘텐츠</div><div class="mc-val" style="font-size:16px;color:var(--ppv)">${pt[0].title.length>8?pt[0].title.slice(0,8)+'…':pt[0].title}</div><div class="mc-sub">${nn(pt[0].buys)}건</div></div>
+    </div>
+    <div class="two-col">
+      <div class="chart-box"><div class="chart-lbl">PPV 상위 콘텐츠 구매건수</div><div class="chart-wrap" style="height:240px"><canvas id="ch-ppv-top"></canvas></div></div>
+      <div>
+        <div class="chart-box" style="margin-bottom:10px"><div class="chart-lbl">요일별 PPV 구매 현황</div><div class="chart-wrap" style="height:150px"><canvas id="ch-ppv-dow"></canvas></div></div>
+        <div class="tbl-wrap"><div class="tbl-scroll" style="max-height:150px">
+          <table><thead><tr><th>순위</th><th>프로그램</th><th>분류</th><th style="text-align:right">구매</th><th style="text-align:right">점유율</th><th style="text-align:right">매출</th></tr></thead>
+          <tbody>${topRows}</tbody></table>
+        </div></div>
+      </div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-num">02 ·</span><span class="sec-title">상품별 이용 비교</span><span class="sec-sub">동일 콘텐츠 PPV · KBS월정액 · 지상파월정액 이용건수</span></div>
+    <div class="tbl-wrap"><div class="tbl-scroll" style="max-height:360px">
+      <table><thead><tr>
+        <th>순위</th><th>프로그램</th>
+        <th style="text-align:right;color:var(--ppv)">PPV 구매</th>
+        <th style="text-align:right;color:var(--km)">KBS 월정액</th>
+        <th style="text-align:right;color:var(--kbs)">지상파 월정액</th>
+      </tr></thead>
+      <tbody>${compareRows}</tbody></table>
+    </div></div>
+  </div>`;
+}
+
+/* ── RENDER: 세일즈 제언 (독립 탭) ── */
+function renderSalesPage(kbsTop,totals,totalAll,kNO,mNO,shares,top20,ppv,km){
+  const kbsOldPct=(kNO.old/totals.KBS*100).toFixed(1);
+  const mbcOldPct=(mNO.old/totals.MBC*100).toFixed(1);
+  const kbsTop1=kbsTop[0]||{title:'',views:0};
+  const mbcTop1=top20.find(r=>r.bs==='MBC')||{title:'',views:0};
+  let ppvHint='';
+  if(ppv){
+    const pm={};ppv.forEach(r=>pm[r.title]=(pm[r.title]||0)+r.buys);
+    const ptop=Object.entries(pm).sort((a,b)=>b[1]-a[1])[0];
+    if(ptop)ppvHint=`"${ptop[0]}"(${nn(ptop[1])}건)이 PPV 1위 — 월정액 내 집중 노출 시 구독 전환 가능성 높음.`;
+  }
+  const cards=[
+    {ico:'🎯',title:'신작 초기 유입 극대화',
+     tag:'즉시 액션',tagC:'var(--up)',
+     body:`KBS 신작 점유율 ${(kNO.new/totals.KBS*100).toFixed(1)}%. "${kbsTop1.title}" 방영일 전후 푸시 알림·메인 배너 집중 편성. 방영 당일 스파이크를 놓치지 않는 것이 핵심.`,
+     metric:`KBS 1위 ${nn(kbsTop1.views)}건 vs MBC 1위 ${nn(mbcTop1.views)}건`},
+    {ico:'📚',title:'구작 큐레이션 탭 운영',
+     tag:'중기 전략',tagC:'var(--acc)',
+     body:`KBS 구작 ${kbsOldPct}% vs MBC ${mbcOldPct}% — ${(parseFloat(mbcOldPct)-parseFloat(kbsOldPct)).toFixed(1)}%p 격차. 외부 이슈(흥행 영화·화제작) 연계 "지금 보면 딱인 구작" 큐레이션. 왕과나는남자 같은 흥행 IP 연계 효과 검증됨.`,
+     metric:`구작 격차 ${(parseFloat(mbcOldPct)-parseFloat(kbsOldPct)).toFixed(1)}%p`},
+    {ico:'🔗',title:'경쟁사 방영일 대응 전략',
+     tag:'즉시 액션',tagC:'var(--up)',
+     body:`MBC "${mbcTop1.title}" ${nn(mbcTop1.views)}건으로 전체 1위. 경쟁작 방영 시간대 전후 KBS 추천 콘텐츠 자동 노출 강화. 시청자 대체 선택지 제시 → 이탈 방어.`,
+     metric:`3사 1위 MBC vs KBS 격차 ${nn(mbcTop1.views-kbsTop1.views)}건`},
+    {ico:'💰',title:'PPV→월정액 전환 넛지',
+     tag:'수익화',tagC:'var(--ppv)',
+     body:ppvHint||`구작 마니아 이용자(PPV 결제 경험) 대상 월정액 전환 프로모션. 편당 결제 대비 월정액 가성비 메시지 강조. 구작 라이브러리 무제한 소비 USP 활용.`,
+     metric:ppv?`PPV 총 ${nn(ppv.reduce((s,r)=>s+r.buys,0))}건 → 전환 대상`:'PPV 데이터 업로드 시 확인 가능'},
+    {ico:'📺',title:'재방송 채널 연계 VOD 유입',
+     tag:'운영 개선',tagC:'var(--sbs)',
+     body:`PP채널 재방송 편성 캘린더 모니터링 → 재방 시작 1주 전 VOD 선노출. 왜그래 풍상씨 사례처럼 재방→VOD 유입 효과 검증. 주요 채널 MD와 편성 연동 협의 권장.`,
+     metric:`재방송 효과: 해당 주 PPV 구매 3배↑ 사례`},
+    {ico:'🏆',title:'KBS 월정액 독점 콘텐츠 강조',
+     tag:'리텐션',tagC:'var(--km)',
+     body:`황금빛 내 인생 등 KBS 월정액 전용 강세 콘텐츠를 구독 유지 핵심 USP로 포지셔닝. 해지 예정 이용자 대상 "이 콘텐츠를 무제한으로" 리텐션 메시지 발송. 자생적 팬덤 기반 구독 유지력 활용.`,
+     metric:`KBS 월정액 ${km?'TOP: '+km[0]?.title:'데이터 업로드 시 확인'}`},
+  ];
+
+  return `
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-num">·</span><span class="sec-title">세일즈 제언</span><span class="sec-sub">이번 주 데이터 기반 액션 아이템</span></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      ${cards.map(c=>`
+      <div class="sig" style="padding:18px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="font-size:20px">${c.ico}</span>
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;background:rgba(255,255,255,.06);color:${c.tagC}">${c.tag}</span>
+        </div>
+        <div class="sig-title" style="font-size:13px;margin-bottom:8px">${c.title}</div>
+        <div class="sig-body" style="margin-bottom:10px">${c.body}</div>
+        <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--tx3);border-top:1px solid var(--bd);padding-top:8px">${c.metric}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+
+function printJsp(){
+  // 지상파 월정액 탭 활성화
+  const btn=document.getElementById('tab-jsp');
+  showPage('p-jsp',btn);
+  // 차트 resize 후 인쇄 (깨짐 방지)
+  setTimeout(()=>{
+    Object.values(CHS).forEach(c=>{try{c.resize();}catch(e){}});
+    setTimeout(()=>window.print(),300);
+  },200);
+}
+
+function resetApp(){
+  ['kbs','mbc','sbs','ppv','km'].forEach(k=>{
+    S[k]=null;
+    document.getElementById('fc-'+k).classList.remove('loaded','opt-loaded');
+    document.getElementById('fn-'+k).textContent='';
+  });
+  document.querySelectorAll('input[type=file]').forEach(i=>i.value='');
+  renderChips();
+  document.getElementById('gen-btn').classList.remove('ready');
+  document.getElementById('report').style.display='none';
+  document.getElementById('tab-ppv').style.display='none';
+  document.getElementById('upload-zone').style.display='flex';
+  const firstTab=document.getElementById('tab-jsp'); if(firstTab) showPage('p-jsp',firstTab);
+  window.scrollTo(0,0);
+}
+</script>
+</body>
+</html>
