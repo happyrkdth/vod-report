@@ -308,14 +308,17 @@ function parsePpv(raw){
   return rows;
 }
 function parseKm(raw){
-  const rows=[];
+  // 회차별 행을 시리즈명 기준으로 합산
+  const map={};
   for(let i=4;i<raw.length;i++){
     const r=raw[i];
-    if(!r[2]||String(r[2]).includes('대표제목'))continue;
+    if(!r[2]||String(r[2]).includes('\uB300\uD45C\uC81C\uBAA9'))continue;
     const v=parseFloat(r[6])||0,t=String(r[2]).trim();
-    if(v>0&&t)rows.push({title:t,views:v});
+    if(v>0&&t) map[t]=(map[t]||0)+v;
   }
-  return rows;
+  return Object.entries(map)
+    .map(([title,views])=>({title,views}))
+    .sort((a,b)=>b.views-a.views);
 }
 function groupBy(arr,keyFn,init,merge){
   const m={};
