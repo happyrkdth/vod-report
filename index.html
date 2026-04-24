@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOD 주간 리포트 생성기</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0f14;--sur:#161920;--sur2:#1e2230;--bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.13);
+  --acc:#4f8ef7;--kbs:#e85d4a;--mbc:#4caf7d;--sbs:#f0b429;--ppv:#a78bfa;--km:#38bdf8;
+  --tx:#e8eaf0;--tx2:#9299a8;--tx3:#5a6170;--up:#4caf7d;--r:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'Noto Sans KR',sans-serif;font-size:13px;min-height:100vh}
+
+/* ── UPLOAD ── */
+#upload-zone{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px}
+.logo-tag{font-size:11px;font-family:'DM Mono',monospace;letter-spacing:.2em;color:var(--tx3);margin-bottom:36px}
+.hero{font-size:clamp(28px,4.5vw,46px);font-weight:900;line-height:1.1;text-align:center;margin-bottom:10px}
+.hero span{color:var(--acc)}
+.hero-sub{color:var(--tx2);font-size:14px;text-align:center;margin-bottom:44px;line-height:1.7}
+.file-group{width:100%;max-width:920px;margin-bottom:16px}
+.grp-label{font-size:10px;font-family:'DM Mono',monospace;letter-spacing:.15em;margin-bottom:8px}
+.grp-req{color:var(--acc)}.grp-opt{color:var(--tx3)}
+.fg3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.fg2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;max-width:620px;margin:0 auto}
+.fc{background:var(--sur);border:1.5px dashed var(--bd2);border-radius:var(--r);padding:18px 14px;text-align:center;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
+.fc:hover{border-color:var(--acc);background:rgba(79,142,247,.04)}
+.fc.loaded{border-style:solid;border-color:var(--up);background:rgba(76,175,125,.05)}
+.fc.opt-loaded{border-style:solid;border-color:var(--ppv);background:rgba(167,139,250,.05)}
+.fc input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.fc-ico{font-size:20px;margin-bottom:6px}
+.fc-lbl{font-size:12px;font-weight:700;margin-bottom:2px}
+.lkbs{color:var(--kbs)}.lmbc{color:var(--mbc)}.lsbs{color:var(--sbs)}.lppv{color:var(--ppv)}.lkm{color:var(--km)}
+.fc-hint{font-size:10px;color:var(--tx3)}
+.fc-fn{font-size:10px;margin-top:4px;font-family:'DM Mono',monospace;color:var(--up)}
+.fc.opt-loaded .fc-fn{color:var(--ppv)}
+.opt-note{font-size:11px;color:var(--tx3);text-align:center;margin-bottom:24px}
+.gen-btn{background:var(--acc);color:#fff;border:none;padding:14px 48px;border-radius:50px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;font-family:'Noto Sans KR',sans-serif;opacity:.4;pointer-events:none}
+.gen-btn.ready{opacity:1;pointer-events:auto;box-shadow:0 0 32px rgba(79,142,247,.3)}
+.gen-btn.ready:hover{background:#6ba3ff;transform:translateY(-2px)}
+
+/* ── LOADER ── */
+#loader{display:none;position:fixed;inset:0;background:var(--bg);z-index:300;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.ld-txt{font-family:'DM Mono',monospace;font-size:12px;color:var(--tx3);letter-spacing:.1em}
+.ld-bar{width:200px;height:2px;background:var(--sur2);border-radius:1px;overflow:hidden}
+.ld-fill{height:100%;background:var(--acc);width:0;transition:width .3s}
+
+/* ── REPORT NAV ── */
+#report{display:none}
+.rnav{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd);padding:0 28px;display:flex;align-items:center;gap:10px;height:46px}
+.rnav-logo{font-family:'DM Mono',monospace;font-size:10px;color:var(--tx3);letter-spacing:.12em;margin-right:auto}
+.rnav-period{font-size:11px;color:var(--tx2);font-family:'DM Mono',monospace}
+.rtab{background:none;border:1px solid var(--bd2);color:var(--tx2);padding:4px 12px;border-radius:20px;font-size:11px;cursor:pointer;transition:all .15s;font-family:'Noto Sans KR',sans-serif;white-space:nowrap}
+.rtab:hover,.rtab.active{border-color:var(--acc);color:var(--acc);background:rgba(79,142,247,.08)}
+.rnav-dl{background:var(--acc);color:#fff;border:none;padding:5px 14px;border-radius:20px;font-size:11px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-weight:600;white-space:nowrap}
+.rnav-dl:hover{background:#6ba3ff}
+.rnav-reset{background:none;border:1px solid var(--bd2);color:var(--tx3);padding:4px 10px;border-radius:20px;font-size:11px;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
+.rnav-reset:hover{border-color:#e85d4a;color:#e85d4a}
+
+/* ── PAGES ── */
+.rpage{display:none;max-width:1280px;margin:0 auto;padding:24px 28px 60px}
+.rpage.active{display:block}
+
+/* ── SECTION ── */
+.sec{margin-bottom:28px}
+.sec-hd{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
+.sec-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--acc);letter-spacing:.1em}
+.sec-title{font-size:15px;font-weight:700}
+.sec-sub{font-size:10px;color:var(--tx3);margin-left:auto}
+
+/* ── HEADLINE ── */
+.headline{background:var(--sur);border:1px solid var(--bd);border-left:3px solid var(--acc);border-radius:var(--r);padding:14px 20px;margin-bottom:10px}
+.hl-tag{font-size:9px;font-family:'DM Mono',monospace;letter-spacing:.15em;color:var(--acc);margin-bottom:5px}
+.hl-txt{font-size:13px;font-weight:500;line-height:1.6}
+
+/* ── SIGNALS ── */
+.sig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sig{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:14px}
+.sig-ico{font-size:16px;margin-bottom:6px}
+.sig-title{font-size:11px;font-weight:700;margin-bottom:4px}
+.sig-body{font-size:11px;color:var(--tx2);line-height:1.55}
+
+/* ── TWO-COL LAYOUT — chart left, table right ── */
+.two-col{display:grid;grid-template-columns:380px 1fr;gap:12px;align-items:start}
+.two-col-rev{display:grid;grid-template-columns:1fr 380px;gap:12px;align-items:start}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:start}
+
+/* ── METRIC STRIP ── */
+.metric-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.mc{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:14px}
+.mc-label{font-size:10px;color:var(--tx3);margin-bottom:5px;letter-spacing:.03em}
+.mc-val{font-size:22px;font-weight:900;font-family:'DM Mono',monospace;margin-bottom:3px;line-height:1}
+.mc-sub{font-size:10px;color:var(--tx2)}
+
+/* ── SHARE BARS ── */
+.share-box{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:16px}
+.srow{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.srow:last-child{margin-bottom:0}
+.sbs-nm{font-weight:700;font-size:11px;width:30px}
+.sbar-bg{flex:1;height:7px;background:var(--sur2);border-radius:4px;overflow:hidden}
+.sbar-fill{height:100%;border-radius:4px;transition:width .9s cubic-bezier(.16,1,.3,1)}
+.spct{font-family:'DM Mono',monospace;font-size:11px;width:44px;text-align:right}
+.ssub{font-size:10px;color:var(--tx3);width:100px;text-align:right}
+
+/* ── CHART BOX ── */
+.chart-box{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:14px}
+.chart-lbl{font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:8px}
+/* canvas는 반드시 이 wrapper 안에서만 크기를 가짐 */
+.chart-wrap{position:relative;width:100%;overflow:hidden}
+.chart-wrap canvas{position:absolute;top:0;left:0;width:100%!important;height:100%!important}
+
+/* ── SCROLLABLE TABLE ── */
+.tbl-wrap{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+.tbl-scroll{overflow-y:auto}
+.tbl-scroll::-webkit-scrollbar{width:4px}
+.tbl-scroll::-webkit-scrollbar-track{background:var(--sur2)}
+.tbl-scroll::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px}
+table{width:100%;border-collapse:collapse}
+th{background:var(--sur2);font-size:10px;font-weight:600;color:var(--tx3);letter-spacing:.05em;padding:7px 10px;text-align:left;border-bottom:1px solid var(--bd2);position:sticky;top:0;z-index:1}
+td{padding:7px 10px;font-size:11px;border-bottom:1px solid var(--bd)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.rn{font-family:'DM Mono',monospace;font-size:10px;color:var(--tx3)}
+.rn.t3{color:var(--acc);font-weight:700}
+.badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:700}
+.bkbs{background:rgba(232,93,74,.15);color:var(--kbs)}
+.bmbc{background:rgba(76,175,125,.15);color:var(--mbc)}
+.bsbs{background:rgba(240,180,41,.15);color:var(--sbs)}
+.bnew{background:rgba(79,142,247,.12);color:var(--acc)}
+.bold{background:rgba(240,180,41,.1);color:var(--sbs)}
+.nc{font-family:'DM Mono',monospace;font-size:11px;text-align:right}
+
+/* ── HEALTH GRID ── */
+.health-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.hc{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:12px}
+.hc-st{font-size:8px;font-family:'DM Mono',monospace;letter-spacing:.1em;margin-bottom:5px}
+.s-rising{color:var(--up)}.s-stable{color:var(--acc)}.s-flag{color:var(--sbs)}.s-old{color:var(--ppv)}
+.hc-name{font-size:12px;font-weight:700;margin-bottom:2px}
+.hc-val{font-size:10px;color:var(--tx2)}
+.mbar{height:2px;background:var(--sur2);border-radius:1px;margin-top:7px;overflow:hidden}
+.mbar-f{height:100%;border-radius:1px}
+
+/* ── PRINT ── */
+@media print{
+  @page{ size:A4 landscape; margin:8mm }
+  .rnav,#upload-zone,#loader{ display:none!important }
+  #report{ display:block!important }
+  /* 비활성 탭 페이지 숨김, 활성 탭만 출력 */
+  .rpage{ display:none!important; padding:0; max-width:100% }
+  .rpage.active{ display:block!important }
+  body{ background:#fff!important; color:#111!important; font-size:10px!important }
+  /* 잘림 방지 */
+  .sec{ page-break-inside:avoid; margin-bottom:10px!important }
+  /* 색상 */
+  .mc-val,.rn.t3{ color:#111!important }
+  .tx2,.tx3,.mc-sub,.chart-lbl,.hc-val,.sig-body,.ssub,.hl-tag{ color:#555!important }
+  .hl-txt{ color:#111!important; font-size:12px!important }
+  /* 배경·테두리 */
+  .mc,.hc,.tbl-wrap,.chart-box,.share-box,.headline,.sig{
+    background:#f7f7f7!important; border:1px solid #ddd!important }
+  /* 스크롤 테이블 펼치기 */
+  .tbl-scroll{ max-height:none!important; overflow:visible!important }
+  /* 여백·패딩 줄이기 */
+  .mc{ padding:7px 10px!important }
+  .hc{ padding:7px 10px!important }
+  .sig{ padding:8px 10px!important }
+  .chart-box{ padding:8px 10px!important }
+  .rpage.active{ padding:0!important }
+  .sec-hd{ margin-bottom:8px!important }
+  .metric-strip{ gap:6px!important; margin-bottom:8px!important }
+  .sig-grid,.health-grid{ gap:6px!important }
+  .two-col,.two-col-rev{ gap:8px!important }
+  /* 차트 높이 축소 */
+  .chart-wrap{ overflow:visible!important }
+  .chart-wrap[style*="200px"]{ height:110px!important }
+  .chart-wrap[style*="140px"]{ height:90px!important }
+  .chart-wrap[style*="150px"]{ height:100px!important }
+  .chart-wrap[style*="130px"]{ height:85px!important }
+}
+
+@media(max-width:900px){
+  .two-col,.two-col-rev,.three-col{grid-template-columns:1fr}
+  .metric-strip{grid-template-columns:repeat(2,1fr)}
+  .sig-grid{grid-template-columns:1fr}
+  .health-grid{grid-template-columns:repeat(2,1fr)}
+  .rpage{padding:16px 12px 50px}
+  .fg3{grid-template-columns:1fr}
+  .fg2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="ld-txt" id="ld-msg">파싱 중...</div>
+  <div class="ld-bar"><div class="ld-fill" id="ld-fill"></div></div>
+</div>
+
+<!-- ═══ UPLOAD ═══ -->
+<div id="upload-zone">
+  <div class="logo-tag">KBS · VOD WEEKLY ANALYTICS</div>
+  <h1 class="hero">주간 리포트<br><span>자동 생성기</span></h1>
+  <p class="hero-sub">파일 업로드 → 즉시 분석 리포트 생성<br>PDF 저장 · 팀 공유 가능</p>
+
+  <div class="file-group">
+    <div class="grp-label grp-req">▸ REQUIRED — 지상파 통합월정액 3사</div>
+    <div class="fg3">
+      <div class="fc" id="fc-kbs"><input type="file" accept=".xlsx,.xls" onchange="handleFile(event,'kbs')">
+        <div class="fc-ico">📺</div><div class="fc-lbl lkbs">KBS 콘텐츠</div>
+        <div class="fc-hint">지상파월정액_KBS콘텐츠.xlsx</div><div class="fc-fn" id="fn-kbs"></div></div>
+      <div class="fc" id="fc-mbc"><input type="file" accept=".xlsx,.xls" onchange="handleFile(event,'mbc')">
+        <div class="fc-ico">🎬</div><div class="fc-lbl lmbc">MBC 콘텐츠</div>
+        <div class="fc-hint">지상파월정액_MBC콘텐츠.xlsx</div><div class="fc-fn" id="fn-mbc"></div></div>
+      <div class="fc" id="fc-sbs"><input type="file" accept=".xlsx,.xls" onchange="handleFile(event,'sbs')">
+        <div class="fc-ico">🎭</div><div class="fc-lbl lsbs">SBS 콘텐츠</div>
+        <div class="fc-hint">지상파월정액_SBS콘텐츠.xlsx</div><div class="fc-fn" id="fn-sbs"></div></div>
+    </div>
+  </div>
+
+  <div class="file-group">
+    <div class="grp-label grp-opt">▸ OPTIONAL — 추가 상품 (없어도 생성됨)</div>
+    <div class="fg2">
+      <div class="fc" id="fc-ppv"><input type="file" accept=".xlsx,.xls" onchange="handleFile(event,'ppv')">
+        <div class="fc-ico">🎯</div><div class="fc-lbl lppv">PPV 단건</div>
+        <div class="fc-hint">KBS_단건.xlsx</div><div class="fc-fn" id="fn-ppv"></div></div>
+      <div class="fc" id="fc-km"><input type="file" accept=".xlsx,.xls" onchange="handleFile(event,'km')">
+        <div class="fc-ico">⭐</div><div class="fc-lbl lkm">KBS 월정액</div>
+        <div class="fc-hint">KBS_월정액.xlsx</div><div class="fc-fn" id="fn-km"></div></div>
+    </div>
+  </div>
+  <p class="opt-note">선택 파일은 PPV·KBS월정액 탭에서 추가 분석됩니다</p>
+  <button class="gen-btn" id="gen-btn" onclick="generateReport()">리포트 생성하기 →</button>
+</div>
+
+<!-- ═══ REPORT ═══ -->
+<div id="report">
+  <nav class="rnav">
+    <span class="rnav-logo">VOD WEEKLY</span>
+    <span class="rnav-period" id="rnav-period"></span>
+    <button class="rtab active" onclick="showPage('p-overview',this)">전체 현황</button>
+    <button class="rtab" onclick="showPage('p-kbs',this)">KBS 심층</button>
+    <button class="rtab" id="tab-ppv" style="display:none" onclick="showPage('p-ppv',this)">PPV · KBS월정액</button>
+    <button class="rnav-dl" onclick="window.print()">📄 PDF 저장</button>
+    <button class="rnav-reset" onclick="resetApp()">← 새 파일</button>
+  </nav>
+  <div class="rpage active" id="p-overview"></div>
+  <div class="rpage" id="p-kbs"></div>
+  <div class="rpage" id="p-ppv"></div>
+</div>
+
+<script>
+const S={kbs:null,mbc:null,sbs:null,ppv:null,km:null};
+const CHS={};
+
+function handleFile(e,key){
+  const f=e.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    const wb=XLSX.read(ev.target.result,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[key==='km'?1:0]];
+    S[key]={name:f.name,raw:XLSX.utils.sheet_to_json(ws,{header:1,defval:''})};
+    document.getElementById('fc-'+key).classList.add(key==='ppv'||key==='km'?'opt-loaded':'loaded');
+    const fn=document.getElementById('fn-'+key);
+    fn.textContent=f.name.length>24?f.name.slice(0,22)+'…':f.name;
+    if(S.kbs&&S.mbc&&S.sbs)document.getElementById('gen-btn').classList.add('ready');
+  };
+  rd.readAsArrayBuffer(f);
+}
+
+function showPage(id,btn){
+  document.querySelectorAll('.rpage').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');btn.classList.add('active');
+}
+
+function setLoader(msg,pct){document.getElementById('ld-msg').textContent=msg;document.getElementById('ld-fill').style.width=pct+'%';}
+function tick(){return new Promise(r=>setTimeout(r,50));}
+const nn=v=>Math.round(v).toLocaleString();
+const pp=v=>v.toFixed(2)+'%';
+const fmt=d=>`${d.slice(0,4)}.${d.slice(4,6)}.${d.slice(6,8)}`;
+const sm=rows=>rows.reduce((s,r)=>s+(r.views||0),0);
+
+function parseTppm(raw,bs){
+  const rows=[];
+  for(let i=2;i<raw.length;i++){
+    const r=raw[i];
+    if(!r[4]||String(r[4]).includes('시리즈명'))continue;
+    const v=parseFloat(r[8])||0,d=String(r[0]||'').replace(/\D/g,'').slice(0,8);
+    const air=String(r[6]||'').replace(/\D/g,''),ay=air.length>=4?parseInt(air.slice(0,4)):null;
+    if(v>0&&d.length===8)rows.push({bs,date:d,title:String(r[4]).trim(),views:v,airyear:ay});
+  }
+  return rows;
+}
+function parsePpv(raw){
+  const rows=[];
+  for(let i=2;i<raw.length;i++){
+    const r=raw[i];
+    if(!r[5]||String(r[5]).includes('시리즈명'))continue;
+    const b=parseFloat(r[8])||0,rv=parseFloat(r[9])||0;
+    const d=String(r[0]||'').replace(/\D/g,'').slice(0,8);
+    const air=String(r[7]||'').replace(/\D/g,''),ay=air.length>=4?parseInt(air.slice(0,4)):null;
+    if(b>0&&d.length===8)rows.push({date:d,title:String(r[5]).trim(),buys:b,rev:rv,airyear:ay});
+  }
+  return rows;
+}
+function parseKm(raw){
+  const rows=[];
+  for(let i=4;i<raw.length;i++){
+    const r=raw[i];
+    if(!r[2]||String(r[2]).includes('대표제목'))continue;
+    const v=parseFloat(r[6])||0,t=String(r[2]).trim();
+    if(v>0&&t)rows.push({title:t,views:v});
+  }
+  return rows;
+}
+function groupBy(arr,keyFn,init,merge){
+  const m={};
+  arr.forEach(r=>{const k=keyFn(r);if(!m[k])m[k]={...init};merge(m[k],r);});
+  return m;
+}
+
+async function generateReport(){
+  document.getElementById('loader').style.display='flex';
+  Object.values(CHS).forEach(c=>{try{c.destroy();}catch(e){}});
+  await tick();setLoader('KBS 파싱...',15);await tick();
+  const kbs=parseTppm(S.kbs.raw,'KBS');
+  setLoader('MBC 파싱...',32);await tick();const mbc=parseTppm(S.mbc.raw,'MBC');
+  setLoader('SBS 파싱...',48);await tick();const sbs=parseTppm(S.sbs.raw,'SBS');
+  let ppv=null,km=null;
+  if(S.ppv){setLoader('PPV 파싱...',62);await tick();ppv=parsePpv(S.ppv.raw);}
+  if(S.km){setLoader('KBS월정액 파싱...',75);await tick();km=parseKm(S.km.raw);}
+  setLoader('계산 중...',90);await tick();
+  buildAll(kbs,mbc,sbs,ppv,km);
+  setLoader('완료!',100);await new Promise(r=>setTimeout(r,280));
+  document.getElementById('loader').style.display='none';
+  document.getElementById('upload-zone').style.display='none';
+  if(ppv||km)document.getElementById('tab-ppv').style.display='inline-block';
+  document.getElementById('report').style.display='block';
+  window.scrollTo(0,0);
+}
+
+function buildAll(kbs,mbc,sbs,ppv,km){
+  const all=[...kbs,...mbc,...sbs];
+  const totals={KBS:sm(kbs),MBC:sm(mbc),SBS:sm(sbs)};
+  const totalAll=totals.KBS+totals.MBC+totals.SBS;
+  const shares={KBS:totals.KBS/totalAll*100,MBC:totals.MBC/totalAll*100,SBS:totals.SBS/totalAll*100};
+  const dates=[...new Set(all.map(r=>r.date))].sort();
+  document.getElementById('rnav-period').textContent=`${fmt(dates[0])} ~ ${fmt(dates[dates.length-1])}`;
+
+  const titleMap=groupBy(all,r=>r.bs+'||'+r.title,{bs:'',title:'',views:0,airyear:null},
+    (a,r)=>{a.bs=r.bs;a.title=r.title;a.views+=r.views;if(!a.airyear)a.airyear=r.airyear;});
+  const top20=Object.values(titleMap).sort((a,b)=>b.views-a.views).slice(0,20);
+  const kbsMap=groupBy(kbs,r=>r.title,{title:'',views:0,airyear:null},
+    (a,r)=>{a.title=r.title;a.views+=r.views;if(!a.airyear)a.airyear=r.airyear;});
+  const kbsTop=Object.values(kbsMap).sort((a,b)=>b.views-a.views);
+
+  const daily={KBS:{},MBC:{},SBS:{}};
+  [{bs:'KBS',rows:kbs},{bs:'MBC',rows:mbc},{bs:'SBS',rows:sbs}]
+    .forEach(({bs,rows})=>rows.forEach(r=>daily[bs][r.date]=(daily[bs][r.date]||0)+r.views));
+  const no=rows=>{let n=0,o=0;rows.forEach(r=>r.airyear&&r.airyear<=2022?o+=r.views:n+=r.views);return{new:n,old:o};};
+  const kNO=no(kbs),mNO=no(mbc),sNO=no(sbs);
+
+  document.getElementById('p-overview').innerHTML=renderOverview(totalAll,totals,shares,kNO,mNO,sNO,top20,dates,daily);
+  document.getElementById('p-kbs').innerHTML=renderKbs(kbsTop,totals,totalAll,dates,daily);
+  if(ppv||km)document.getElementById('p-ppv').innerHTML=renderPpvKm(ppv,km,kbsTop,totals);
+
+  setTimeout(()=>{
+    /* Overview charts */
+    mkLine('ch-daily',dates.map(d=>`${d.slice(4,6)}/${d.slice(6,8)}`),
+      [{label:'KBS',data:dates.map(d=>daily.KBS[d]||0),color:'#e85d4a'},
+       {label:'MBC',data:dates.map(d=>daily.MBC[d]||0),color:'#4caf7d'},
+       {label:'SBS',data:dates.map(d=>daily.SBS[d]||0),color:'#f0b429'}]);
+    mkStackedBar('ch-newold',['KBS','MBC','SBS'],
+      [kNO.new/totals.KBS*100,mNO.new/totals.MBC*100,sNO.new/totals.SBS*100],
+      [kNO.old/totals.KBS*100,mNO.old/totals.MBC*100,sNO.old/totals.SBS*100]);
+    /* KBS charts */
+    mkLine('ch-kbs-daily',dates.map(d=>`${d.slice(4,6)}/${d.slice(6,8)}`),
+      [{label:'KBS',data:dates.map(d=>daily.KBS[d]||0),color:'#e85d4a',fill:true}]);
+    const t5=kbsTop.slice(0,5);
+    mkHBar('ch-kbs-top5',t5.map(p=>p.title.length>9?p.title.slice(0,9)+'…':p.title),t5.map(p=>p.views),'#e85d4a');
+    /* PPV chart */
+    if(ppv){
+      const pm={};ppv.forEach(r=>pm[r.title]=(pm[r.title]||0)+r.buys);
+      const pt=Object.entries(pm).sort((a,b)=>b[1]-a[1]).slice(0,7);
+      mkHBar('ch-ppv-top',pt.map(([t])=>t.length>9?t.slice(0,9)+'…':t),pt.map(([,v])=>v),'#a78bfa');
+    }
+  },120);
+}
+
+/* ── CHART HELPERS ── */
+// chart-wrap div가 height를 고정 → canvas는 position:absolute로 100% 채움
+function mkLine(id,labels,datasets){
+  const c=document.getElementById(id);if(!c)return;
+  if(CHS[id])try{CHS[id].destroy();}catch(e){}
+  CHS[id]=new Chart(c,{type:'line',data:{labels,datasets:datasets.map(d=>({
+    label:d.label,data:d.data,borderColor:d.color,
+    backgroundColor:d.color+'22',
+    tension:.4,pointRadius:3,borderWidth:2,fill:d.fill||false
+  }))},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#9299a8',font:{size:10},boxWidth:10}}},
+    scales:{x:{ticks:{color:'#5a6170',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+            y:{ticks:{color:'#5a6170',font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'천':v},grid:{color:'rgba(255,255,255,.04)'}}}}});
+}
+function mkStackedBar(id,labels,newData,oldData){
+  const c=document.getElementById(id);if(!c)return;
+  if(CHS[id])try{CHS[id].destroy();}catch(e){}
+  CHS[id]=new Chart(c,{type:'bar',data:{labels,datasets:[
+    {label:'신작',data:newData,backgroundColor:['rgba(232,93,74,.8)','rgba(76,175,125,.8)','rgba(240,180,41,.8)'],borderRadius:3},
+    {label:'구작',data:oldData,backgroundColor:['rgba(232,93,74,.28)','rgba(76,175,125,.28)','rgba(240,180,41,.28)'],borderRadius:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#9299a8',font:{size:10},boxWidth:10}}},
+    scales:{x:{stacked:true,ticks:{color:'#5a6170',font:{size:11}},grid:{display:false}},
+            y:{stacked:true,max:100,ticks:{color:'#5a6170',font:{size:10},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,.04)'}}}}});
+}
+function mkHBar(id,labels,data,color){
+  const c=document.getElementById(id);if(!c)return;
+  if(CHS[id])try{CHS[id].destroy();}catch(e){}
+  CHS[id]=new Chart(c,{type:'bar',data:{labels,datasets:[{label:'시청건수',data,
+    backgroundColor:color,borderRadius:3}]},
+  options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+    plugins:{legend:{display:false}},
+    scales:{x:{ticks:{color:'#5a6170',font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'천':v},grid:{color:'rgba(255,255,255,.04)'}},
+            y:{ticks:{color:'#9299a8',font:{size:10}},grid:{display:false}}}}});
+}
+
+/* ── RENDER: OVERVIEW ── */
+function renderOverview(totalAll,totals,shares,kNO,mNO,sNO,top20,dates,daily){
+  const top1=top20[0],kbsTop1=top20.find(r=>r.bs==='KBS'),mbcTop1=top20.find(r=>r.bs==='MBC');
+  const kOldP=(kNO.old/totals.KBS*100).toFixed(1),mOldP=(mNO.old/totals.MBC*100).toFixed(1);
+  const dayTots=dates.map(d=>['KBS','MBC','SBS'].reduce((s,bs)=>s+(daily[bs][d]||0),0));
+  const mx=Math.max(...dayTots),mn=Math.min(...dayTots);
+  const hl=`이번 주 3사 합계 <b>${nn(totalAll)}건</b>. ${top1.bs} <b>"${top1.title}"</b> ${nn(top1.views)}건으로 전체 1위. KBS <b>${shares.KBS.toFixed(2)}%</b> · MBC <b>${shares.MBC.toFixed(2)}%</b> · SBS <b>${shares.SBS.toFixed(2)}%</b>. MBC 구작 비율 ${mOldP}%가 점유율 확대 주요 배경.`;
+  const sigs=[
+    {ico:'📊',title:`KBS↔MBC 1위 격차 ${nn(mbcTop1.views-kbsTop1.views)}건`,body:`KBS "${kbsTop1.title}" ${nn(kbsTop1.views)}건 vs MBC "${mbcTop1.title}" ${nn(mbcTop1.views)}건`},
+    {ico:'📚',title:`구작 KBS ${kOldP}% vs MBC ${mOldP}%`,body:`${(parseFloat(mOldP)-parseFloat(kOldP)).toFixed(1)}%p 격차. 라이브러리 큐레이션 강화 여지.`},
+    {ico:'📅',title:`일별 최대 ${nn(mx)} / 최소 ${nn(mn)}건`,body:`차이 ${((mx/mn-1)*100).toFixed(0)}%. 주말 방영 콘텐츠가 스파이크 주도.`},
+  ];
+  const t20=top20.map((r,i)=>`<tr>
+    <td><span class="rn ${i<3?'t3':''}">${String(i+1).padStart(2,'0')}</span></td>
+    <td><span class="badge b${r.bs.toLowerCase()}">${r.bs}</span></td>
+    <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title}</td>
+    <td><span class="badge ${r.airyear&&r.airyear<=2022?'bold':'bnew'}">${r.airyear&&r.airyear<=2022?'구':'신'}</span></td>
+    <td class="nc">${nn(r.views)}</td>
+    <td class="nc">${pp(r.views/totalAll*100)}</td>
+  </tr>`).join('');
+
+  return `
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-num">01 ·</span><span class="sec-title">이번 주 한 줄 요약</span></div>
+    <div class="headline"><div class="hl-tag">WEEKLY HEADLINE</div><div class="hl-txt">${hl}</div></div>
+    <div class="sig-grid">${sigs.map(s=>`<div class="sig"><div class="sig-ico">${s.ico}</div><div class="sig-title">${s.title}</div><div class="sig-body">${s.body}</div></div>`).join('')}</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-num">02 ·</span><span class="sec-title">방송사별 점유율</span></div>
+    <div class="metric-strip">
+      <div class="mc"><div class="mc-label">총 이용건수</div><div class="mc-val" style="color:var(--acc)">${nn(totalAll)}</div><div class="mc-sub">PPM3 기준</div></div>
+      <div class="mc"><div class="mc-label">KBS</div><div class="mc-val" style="color:var(--kbs)">${shares.KBS.toFixed(2)}%</div><div class="mc-sub">신 ${(kNO.new/totals.KBS*100).toFixed(1)}% / 구 ${kOldP}%</div></div>
+      <div class="mc"><div class="mc-label">MBC</div><div class="mc-val" style="color:var(--mbc)">${shares.MBC.toFixed(2)}%</div><div class="mc-sub">신 ${(mNO.new/totals.MBC*100).toFixed(1)}% / 구 ${mOldP}%</div></div>
+      <div class="mc"><div class="mc-label">SBS</div><div class="mc-val" style="color:var(--sbs)">${shares.SBS.toFixed(2)}%</div><div class="mc-sub">신 ${(sNO.new/totals.SBS*100).toFixed(1)}% / 구 ${(sNO.old/totals.SBS*100).toFixed(1)}%</div></div>
+    </div>
+    <div class="two-col">
+      <div>
+        <div class="share-box" style="margin-bottom:10px">
+          ${[['KBS',shares.KBS,'kbs',totals.KBS],['MBC',shares.MBC,'mbc',totals.MBC],['SBS',shares.SBS,'sbs',totals.SBS]].map(([bs,s,c,tv])=>`
+          <div class="srow"><span class="sbs-nm" style="color:var(--${c})">${bs}</span>
+            <div class="sbar-bg"><div class="sbar-fill" style="width:${s}%;background:var(--${c})"></div></div>
+            <span class="spct">${s.toFixed(2)}%</span><span class="ssub">${nn(tv)}건</span></div>`).join('')}
+        </div>
+        <div class="chart-box"><div class="chart-lbl">신작 / 구작 비율</div><div class="chart-wrap" style="height:130px"><canvas id="ch-newold"></canvas></div></div>
+      </div>
+      <div class="chart-box"><div class="chart-lbl">3사 일별 시청건수 추이</div><div class="chart-wrap" style="height:200px"><canvas id="ch-daily"></canvas></div></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-num">03 ·</span><span class="sec-title">3사 통합 TOP 20</span><span class="sec-sub">전체 시청건수 기준</span></div>
+    <div class="tbl-wrap"><div class="tbl-scroll" style="max-height:460px">
+      <table><thead><tr><th>순위</th><th>방송사</th><th>프로그램</th><th>분류</th><th style="text-align:right">시청건수</th><th style="text-align:right">점유율</th></tr></thead>
+      <tbody>${t20}</tbody></table>
+    </div></div>
+  </div>`;
+}
+
+/* ── RENDER: KBS DEPTH ── */
+function renderKbs(kbsTop,totals,totalAll,dates,daily){
+  const health=kbsTop.slice(0,9).map(p=>{
+    const pct=p.views/totals.KBS*100;
+    const isNew=!p.airyear||p.airyear>2022;
+    let st='stable',sl='안정';
+    if(isNew&&pct>5){st='rising';sl='주목 신작';}
+    else if(!isNew&&pct>3){st='old';sl='구작 강세';}
+    else if(pct<1.5){st='flag';sl='모니터';}
+    return{...p,pct,st,sl};
+  });
+  const top10=kbsTop.slice(0,10).map((r,i)=>`<tr>
+    <td><span class="rn ${i<3?'t3':''}">${String(i+1).padStart(2,'0')}</span></td>
+    <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title}</td>
+    <td><span class="badge ${r.airyear&&r.airyear<=2022?'bold':'bnew'}">${r.airyear&&r.airyear<=2022?'구작':'신작'}</span></td>
+    <td class="nc">${nn(r.views)}</td>
+    <td class="nc">${pp(r.views/totals.KBS*100)}</td>
+    <td class="nc">${pp(r.views/totalAll*100)}</td>
+  </tr>`).join('');
+  return `
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-num">01 ·</span><span class="sec-title">KBS 콘텐츠 건강 체크</span><span class="sec-sub">KBS 내 점유율 기준</span></div>
+    <div class="health-grid">${health.map(p=>`<div class="hc">
+      <div class="hc-st s-${p.st}">${p.sl.toUpperCase()}</div>
+      <div class="hc-name">${p.title}</div>
+      <div class="hc-val">${nn(p.views)}건 · ${p.pct.toFixed(1)}%</div>
+      <div class="mbar"><div class="mbar-f" style="width:${Math.min(100,p.pct*8)}%;background:var(--${p.st==='rising'||p.st==='old'?'up':p.st==='flag'?'sbs':'acc'})"></div></div>
+    </div>`).join('')}</div>
+  </div>
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-num">02 ·</span><span class="sec-title">KBS 세부 현황</span></div>
+    <div class="two-col-rev">
+      <div class="tbl-wrap"><div class="tbl-scroll" style="max-height:340px">
+        <table><thead><tr><th>순위</th><th>프로그램</th><th>분류</th><th style="text-align:right">시청건수</th><th style="text-align:right">KBS내</th><th style="text-align:right">전체</th></tr></thead>
+        <tbody>${top10}</tbody></table>
+      </div></div>
+      <div>
+        <div class="chart-box" style="margin-bottom:10px"><div class="chart-lbl">KBS 일별 시청건수</div><div class="chart-wrap" style="height:140px"><canvas id="ch-kbs-daily"></canvas></div></div>
+        <div class="chart-box"><div class="chart-lbl">KBS TOP 5 콘텐츠</div><div class="chart-wrap" style="height:150px"><canvas id="ch-kbs-top5"></canvas></div></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ── RENDER: PPV + KM ── */
+function renderPpvKm(ppv,km,kbsTop,totals){
+  let out='';
+  if(ppv){
+    const pm={};
+    ppv.forEach(r=>{if(!pm[r.title])pm[r.title]={title:r.title,buys:0,rev:0,airyear:r.airyear};pm[r.title].buys+=r.buys;pm[r.title].rev+=r.rev;});
+    const pt=Object.values(pm).sort((a,b)=>b.buys-a.buys);
+    const tb=pt.reduce((s,r)=>s+r.buys,0),tr=pt.reduce((s,r)=>s+r.rev,0);
+    const oldB=pt.filter(r=>r.airyear&&r.airyear<=2022).reduce((s,r)=>s+r.buys,0);
+    const kbsTopMap={};kbsTop.forEach(r=>kbsTopMap[r.title.replace(/\s/g,'')]=r.views);
+    const crossRows=pt.slice(0,10).map((r,i)=>{
+      const nk=r.title.replace(/\s/g,'');
+      const tv=kbsTopMap[nk]||Object.entries(kbsTopMap).find(([k])=>k.includes(nk.slice(0,5)))?.[1]||0;
+      return `<tr><td><span class="rn ${i<3?'t3':''}">${String(i+1).padStart(2,'0')}</span></td>
+        <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title}</td>
+        <td><span class="badge ${r.airyear&&r.airyear<=2022?'bold':'bnew'}">${r.airyear&&r.airyear<=2022?'구':'신'}</span></td>
+        <td class="nc">${nn(r.buys)}</td><td class="nc">${nn(tv)}</td>
+        <td class="nc">${tv>0?(r.buys/tv*100).toFixed(1)+'%':'—'}</td></tr>`;
+    }).join('');
+    out+=`
+    <div class="sec">
+      <div class="sec-hd"><span class="sec-num">01 ·</span><span class="sec-title">PPV 단건 구매 현황</span></div>
+      <div class="metric-strip" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
+        <div class="mc"><div class="mc-label">총 구매건수</div><div class="mc-val" style="color:var(--ppv)">${nn(tb)}</div><div class="mc-sub">편당 2,000~2,500원</div></div>
+        <div class="mc"><div class="mc-label">추정 매출</div><div class="mc-val" style="color:var(--ppv);font-size:18px">${nn(tr)}원</div><div class="mc-sub">KBS 기준</div></div>
+        <div class="mc"><div class="mc-label">구작 구매 비율</div><div class="mc-val" style="color:var(--ppv)">${pp(oldB/tb*100)}</div><div class="mc-sub">2022년 이전 방영</div></div>
+      </div>
+      <div class="two-col">
+        <div class="chart-box"><div class="chart-lbl">PPV 상위 콘텐츠 구매건수</div><div class="chart-wrap" style="height:200px"><canvas id="ch-ppv-top"></canvas></div></div>
+        <div>
+          <div class="tbl-wrap"><div class="tbl-scroll" style="max-height:320px">
+            <table><thead><tr><th>순위</th><th>프로그램</th><th>분류</th><th style="text-align:right">PPV구매</th><th style="text-align:right">월정액시청</th><th style="text-align:right">전환율</th></tr></thead>
+            <tbody>${crossRows}</tbody></table>
+          </div></div>
+        </div>
+      </div>
+    </div>`;
+  }
+  if(km){
+    const rows=km.slice(0,10).map((r,i)=>`<tr>
+      <td><span class="rn ${i<3?'t3':''}">${String(i+1).padStart(2,'0')}</span></td>
+      <td>${r.title}</td><td class="nc">${nn(r.views)}</td></tr>`).join('');
+    out+=`
+    <div class="sec">
+      <div class="sec-hd"><span class="sec-num">02 ·</span><span class="sec-title">KBS 월정액 TOP 10</span></div>
+      <div class="tbl-wrap" style="max-width:480px"><div class="tbl-scroll" style="max-height:300px">
+        <table><thead><tr><th>순위</th><th>프로그램</th><th style="text-align:right">시청건수</th></tr></thead>
+        <tbody>${rows}</tbody></table>
+      </div></div>
+    </div>`;
+  }
+  return out;
+}
+
+function resetApp(){
+  ['kbs','mbc','sbs','ppv','km'].forEach(k=>{
+    S[k]=null;
+    document.getElementById('fc-'+k).classList.remove('loaded','opt-loaded');
+    document.getElementById('fn-'+k).textContent='';
+  });
+  document.querySelectorAll('input[type=file]').forEach(i=>i.value='');
+  document.getElementById('gen-btn').classList.remove('ready');
+  document.getElementById('report').style.display='none';
+  document.getElementById('tab-ppv').style.display='none';
+  document.getElementById('upload-zone').style.display='flex';
+  document.querySelectorAll('.rtab')[0].click();
+  window.scrollTo(0,0);
+}
+</script>
+</body>
+</html>
