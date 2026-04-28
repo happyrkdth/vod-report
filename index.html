@@ -207,7 +207,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .ssub { display:none!important }
 
   /* ── 3열 차트 레이아웃 ── */
-  #p-jsp [style*="grid-template-columns:200px"] {
+  #p-jsp [style*="grid-template-columns:220px"] {
     grid-template-columns: 150px 1fr 1fr!important;
     gap:5px!important;
   }
@@ -368,7 +368,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <button class="rtab active" id="tab-jsp" onclick="showPage('p-jsp',this)">지상파 월정액</button>
     <button class="rtab" id="tab-km" onclick="showPage('p-km',this)">KBS 월정액</button>
     <button class="rtab" id="tab-ppv" style="display:none" onclick="showPage('p-ppv',this)">PPV</button>
-    <button class="rtab" id="tab-sales" onclick="showPage('p-sales',this)">세일즈 제언</button>
     <button class="rtab" id="tab-trend" onclick="showPage('p-trend',this)">📈 누적 트렌드</button>
     <button class="rnav-dl" onclick="printJsp()">📄 PDF 저장</button>
     <button class="rnav-reset" onclick="resetApp()">← 새 파일</button>
@@ -376,7 +375,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
   <div class="rpage active" id="p-jsp"></div>
   <div class="rpage" id="p-km"></div>
   <div class="rpage" id="p-ppv"></div>
-  <div class="rpage" id="p-sales"></div>
   <div class="rpage" id="p-trend"></div>
 </div>
 
@@ -563,10 +561,10 @@ function buildAll(kbs,mbc,sbs,ppv,km){
   document.getElementById('p-jsp').innerHTML=renderJsp(totalAll,totals,shares,kNO,mNO,sNO,top20,dates,daily,period);
   document.getElementById('p-km').innerHTML=renderKm(km,kbsTop,totals,totalAll);
   if(ppv){ document.getElementById('tab-ppv').style.display='inline-block'; document.getElementById('p-ppv').innerHTML=renderPpv(ppv,kbsTop,km); }
-  document.getElementById('p-sales').innerHTML=renderSalesPage(kbsTop,totals,totalAll,kNO,mNO,shares,top20,ppv,km);
+
 
   // ── 주차 데이터 localStorage 저장 ──
-  saveWeekData({period, totalAll, shares, kNO, mNO, sNO, totals, top20: top20.slice(0,5)}); // async → renderTrend는 saveWeekData 내부에서 호출
+  try{ saveWeekData({period, totalAll, shares, kNO, mNO, sNO, totals, top20: top20.slice(0,5)}); }catch(e){ console.warn('데이터 저장 실패:',e); }
 
   setTimeout(()=>{
     /* 지상파 월정액 차트 */
@@ -672,26 +670,35 @@ function mkGroupedBarAbsolute(id,labels,data,colors){
       datasets:[
         {label:'신작',data:[data[0],data[1],data[2]],
          backgroundColor:[colors[0],colors[1],colors[2]],borderRadius:3,
-         datalabels:{display:true,anchor:'end',align:'top',
-           formatter:(v)=>v>0?[nn(v), (v/total*100).toFixed(1)+'%']:'',
-           color:'#9299a8',font:{size:8}}},
+         datalabels:{
+           display:true, anchor:'end', align:'end', offset:2,
+           formatter:(v)=>v>0?(v/total*100).toFixed(1)+'%\n'+nn(v):'',
+           color:'#9299a8', font:{size:8}, textAlign:'center'
+         }},
         {label:'구작',data:[data[3],data[4],data[5]],
          backgroundColor:[colors[3],colors[4],colors[5]],borderRadius:3,
-         datalabels:{display:true,anchor:'end',align:'top',
-           formatter:(v)=>v>0?[nn(v), (v/total*100).toFixed(1)+'%']:'',
-           color:'#5a6170',font:{size:8}}},
+         datalabels:{
+           display:true, anchor:'end', align:'end', offset:2,
+           formatter:(v)=>v>0?(v/total*100).toFixed(1)+'%\n'+nn(v):'',
+           color:'#5a6170', font:{size:8}, textAlign:'center'
+         }},
       ]
     },
     options:{responsive:true,maintainAspectRatio:false,
-      layout:{padding:{top:28}},
+      layout:{padding:{top:46, left:4, right:4}},
       plugins:{
-        legend:{labels:{color:'#9299a8',font:{size:10},boxWidth:10}},
+        legend:{
+          position:'bottom',
+          labels:{color:'#9299a8',font:{size:10},boxWidth:10,padding:8}
+        },
         datalabels:{display:true}
       },
       scales:{
         x:{ticks:{color:'#5a6170',font:{size:11}},grid:{display:false}},
-        y:{ticks:{color:'#5a6170',font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'천':v},
-           grid:{color:'rgba(255,255,255,.04)'}}
+        y:{
+          ticks:{color:'#5a6170',font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'천':v},
+          grid:{color:'rgba(255,255,255,.04)'}
+        }
       }
     }
   });
@@ -738,17 +745,29 @@ function mkGroupedBarAbsolute(id,labels,data,colors){
       <div class="mc"><div class="mc-label">MBC</div><div class="mc-val" style="color:var(--mbc)">${shares.MBC.toFixed(2)}%</div><div class="mc-sub">신 ${(mNO.new/totals.MBC*100).toFixed(1)}% / 구 ${mOldP}%</div></div>
       <div class="mc"><div class="mc-label">SBS</div><div class="mc-val" style="color:var(--sbs)">${shares.SBS.toFixed(2)}%</div><div class="mc-sub">신 ${(sNO.new/totals.SBS*100).toFixed(1)}% / 구 ${(sNO.old/totals.SBS*100).toFixed(1)}%</div></div>
     </div>
-    <!-- 3열: 점유율바 | 신구작 차트 | 일별 차트 -->
-    <div style="display:grid;grid-template-columns:200px 1fr 1fr;gap:10px;align-items:start">
+    <!-- 3열: 통합 점유율 블록 | 신구작 차트 | 일별 차트 -->
+    <div style="display:grid;grid-template-columns:220px 1fr 1fr;gap:10px;align-items:start">
+      <!-- 통합 블록: 점유율 바 + 이용건수 한번에 -->
       <div class="share-box">
+        <div style="font-size:10px;color:var(--tx3);letter-spacing:.06em;margin-bottom:8px">방송사별 점유율</div>
         ${[['KBS',shares.KBS,'kbs',totals.KBS],['MBC',shares.MBC,'mbc',totals.MBC],['SBS',shares.SBS,'sbs',totals.SBS]].map(([bs,s,c,tv])=>`
-        <div class="srow"><span class="sbs-nm" style="color:var(--${c})">${bs}</span>
-          <div class="sbar-bg"><div class="sbar-fill" style="width:${s}%;background:var(--${c})"></div></div>
-          <span class="spct">${s.toFixed(2)}%</span></div>`).join('')}
-        <div style="margin-top:8px">${[['KBS',totals.KBS,'kbs'],['MBC',totals.MBC,'mbc'],['SBS',totals.SBS,'sbs']].map(([bs,v,c])=>`<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px"><span style="color:var(--${c});font-weight:700">${bs}</span><span style="color:var(--tx2)">${nn(v)}건</span></div>`).join('')}</div>
+        <div style="margin-bottom:9px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
+            <span style="font-size:12px;font-weight:700;color:var(--${c})">${bs}</span>
+            <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700;color:var(--${c})">${s.toFixed(2)}%</span>
+          </div>
+          <div class="sbar-bg" style="height:5px"><div class="sbar-fill" style="width:${s}%;background:var(--${c})"></div></div>
+          <div style="text-align:right;font-size:10px;color:var(--tx3);margin-top:2px">${nn(tv)}건</div>
+        </div>`).join('')}
+        <div style="border-top:1px solid var(--bd);padding-top:7px;margin-top:2px">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--tx3)">
+            <span>총 이용건수</span>
+            <span style="color:var(--tx2);font-family:'DM Mono',monospace">${nn(totalAll)}</span>
+          </div>
+        </div>
       </div>
-      <div class="chart-box"><div class="chart-lbl">신작 / 구작 절대 건수</div><div class="chart-wrap" style="height:140px"><canvas id="ch-newold"></canvas></div></div>
-      <div class="chart-box"><div class="chart-lbl">3사 일별 시청건수 추이</div><div class="chart-wrap" style="height:140px"><canvas id="ch-daily"></canvas></div></div>
+      <div class="chart-box"><div class="chart-lbl">신작 / 구작 절대 건수 (전체 합 기준 %)</div><div class="chart-wrap" style="height:160px"><canvas id="ch-newold"></canvas></div></div>
+      <div class="chart-box"><div class="chart-lbl">3사 일별 시청건수 추이</div><div class="chart-wrap" style="height:160px"><canvas id="ch-daily"></canvas></div></div>
     </div>
   </div>
 
@@ -882,80 +901,11 @@ function renderPpv(ppv,kbsTop,km){
 }
 
 /* ── RENDER: 세일즈 제언 (독립 탭) ── */
-function renderSalesPage(kbsTop,totals,totalAll,kNO,mNO,shares,top20,ppv,km){
-  const kbsOldPct=(kNO.old/totals.KBS*100).toFixed(1);
-  const mbcOldPct=(mNO.old/totals.MBC*100).toFixed(1);
-  const kbsTop1=kbsTop[0]||{title:'',views:0};
-  const mbcTop1=top20.find(r=>r.bs==='MBC')||{title:'',views:0};
-  let ppvHint='';
-  if(ppv){
-    const pm={};ppv.forEach(r=>pm[r.title]=(pm[r.title]||0)+r.buys);
-    const ptop=Object.entries(pm).sort((a,b)=>b[1]-a[1])[0];
-    if(ptop)ppvHint=`"${ptop[0]}"(${nn(ptop[1])}건)이 PPV 1위 — 월정액 내 집중 노출 시 구독 전환 가능성 높음.`;
-  }
-  const cards=[
-    {ico:'🎯',title:'신작 초기 유입 극대화',
-     tag:'즉시 액션',tagC:'var(--up)',
-     body:`KBS 신작 점유율 ${(kNO.new/totals.KBS*100).toFixed(1)}%. "${kbsTop1.title}" 방영일 전후 푸시 알림·메인 배너 집중 편성. 방영 당일 스파이크를 놓치지 않는 것이 핵심.`,
-     metric:`KBS 1위 ${nn(kbsTop1.views)}건 vs MBC 1위 ${nn(mbcTop1.views)}건`},
-    {ico:'📚',title:'구작 큐레이션 탭 운영',
-     tag:'중기 전략',tagC:'var(--acc)',
-     body:`KBS 구작 ${kbsOldPct}% vs MBC ${mbcOldPct}% — ${(parseFloat(mbcOldPct)-parseFloat(kbsOldPct)).toFixed(1)}%p 격차. 외부 이슈(흥행 영화·화제작) 연계 "지금 보면 딱인 구작" 큐레이션. 왕과나는남자 같은 흥행 IP 연계 효과 검증됨.`,
-     metric:`구작 격차 ${(parseFloat(mbcOldPct)-parseFloat(kbsOldPct)).toFixed(1)}%p`},
-    {ico:'🔗',title:'경쟁사 방영일 대응 전략',
-     tag:'즉시 액션',tagC:'var(--up)',
-     body:`MBC "${mbcTop1.title}" ${nn(mbcTop1.views)}건으로 전체 1위. 경쟁작 방영 시간대 전후 KBS 추천 콘텐츠 자동 노출 강화. 시청자 대체 선택지 제시 → 이탈 방어.`,
-     metric:`3사 1위 MBC vs KBS 격차 ${nn(mbcTop1.views-kbsTop1.views)}건`},
-    {ico:'💰',title:'PPV→월정액 전환 넛지',
-     tag:'수익화',tagC:'var(--ppv)',
-     body:ppvHint||`구작 마니아 이용자(PPV 결제 경험) 대상 월정액 전환 프로모션. 편당 결제 대비 월정액 가성비 메시지 강조. 구작 라이브러리 무제한 소비 USP 활용.`,
-     metric:ppv?`PPV 총 ${nn(ppv.reduce((s,r)=>s+r.buys,0))}건 → 전환 대상`:'PPV 데이터 업로드 시 확인 가능'},
-    {ico:'📺',title:'재방송 채널 연계 VOD 유입',
-     tag:'운영 개선',tagC:'var(--sbs)',
-     body:`PP채널 재방송 편성 캘린더 모니터링 → 재방 시작 1주 전 VOD 선노출. 왜그래 풍상씨 사례처럼 재방→VOD 유입 효과 검증. 주요 채널 MD와 편성 연동 협의 권장.`,
-     metric:`재방송 효과: 해당 주 PPV 구매 3배↑ 사례`},
-    {ico:'🏆',title:'KBS 월정액 독점 콘텐츠 강조',
-     tag:'리텐션',tagC:'var(--km)',
-     body:`황금빛 내 인생 등 KBS 월정액 전용 강세 콘텐츠를 구독 유지 핵심 USP로 포지셔닝. 해지 예정 이용자 대상 "이 콘텐츠를 무제한으로" 리텐션 메시지 발송. 자생적 팬덤 기반 구독 유지력 활용.`,
-     metric:`KBS 월정액 ${km?'TOP: '+km[0]?.title:'데이터 업로드 시 확인'}`},
-  ];
-
-  return `
-  <div class="sec">
-    <div class="sec-hd"><span class="sec-num">·</span><span class="sec-title">세일즈 제언</span><span class="sec-sub">이번 주 데이터 기반 액션 아이템</span></div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-      ${cards.map(c=>`
-      <div class="sig" style="padding:18px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-          <span style="font-size:20px">${c.ico}</span>
-          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;background:rgba(255,255,255,.06);color:${c.tagC}">${c.tag}</span>
-        </div>
-        <div class="sig-title" style="font-size:13px;margin-bottom:8px">${c.title}</div>
-        <div class="sig-body" style="margin-bottom:10px">${c.body}</div>
-        <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--tx3);border-top:1px solid var(--bd);padding-top:8px">${c.metric}</div>
-      </div>`).join('')}
-    </div>
-  </div>`;
-}
-
-
-function printJsp(){
-  // 지상파 월정액 탭 활성화
-  const btn=document.getElementById('tab-jsp');
-  showPage('p-jsp',btn);
-  // 차트 resize 후 인쇄 (깨짐 방지)
-  setTimeout(()=>{
-    Object.values(CHS).forEach(c=>{try{c.resize();}catch(e){}});
-    setTimeout(()=>window.print(),300);
-  },200);
-}
-
-/* ══════════════════════════════════════════
+/* ══════════════════════════════════════
    누적 트렌드: localStorage 저장 / 조회 / 렌더링
-   ══════════════════════════════════════════ */
+   ══════════════════════════════════════ */
 const STORAGE_KEY = 'vod_weekly_history';
 
-// ── 저장소: window.storage(공유) 우선, 없으면 localStorage 폴백 ──
 async function saveWeekData(data){
   try {
     let history = await loadHistory();
@@ -965,19 +915,18 @@ async function saveWeekData(data){
     history = history.sort((a,b)=>a.period.localeCompare(b.period)).slice(-52);
     const payload = JSON.stringify(history);
     if(window.storage){
-      await window.storage.set(STORAGE_KEY, payload, true); // shared=true → 팀 공유
+      await window.storage.set(STORAGE_KEY, payload, true);
     } else {
       localStorage.setItem(STORAGE_KEY, payload);
     }
-    console.log(`✅ 저장됨(${window.storage?'공유':'로컬'}): ${data.period} (누적 ${history.length}주)`);
-    renderTrend();
+    console.log('저장됨:', data.period, '누적', history.length+'주');
   } catch(e){ console.warn('저장 실패:', e); }
 }
 
 async function loadHistory(){
   try {
     if(window.storage){
-      const result = await window.storage.get(STORAGE_KEY, true); // shared=true
+      const result = await window.storage.get(STORAGE_KEY, true);
       return result ? JSON.parse(result.value) : [];
     } else {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -1004,7 +953,6 @@ async function clearAllHistory(){
 async function renderTrend(){
   const el = document.getElementById('p-trend');
   if(!el) return;
-  // 로딩 표시
   el.innerHTML=`<div class="sec"><div class="hl-txt" style="color:var(--tx3);text-align:center;padding:40px">데이터 불러오는 중...</div></div>`;
   const history = await loadHistory();
 
@@ -1014,84 +962,64 @@ async function renderTrend(){
       <div class="sec-hd"><span class="sec-num">·</span><span class="sec-title">누적 트렌드</span></div>
       <div class="headline">
         <div class="hl-tag">NO DATA</div>
-        <div class="hl-txt">아직 저장된 주간 데이터가 없습니다.<br>매주 파일을 업로드하면 자동으로 데이터가 누적됩니다.</div>
+        <div class="hl-txt">아직 저장된 주간 데이터가 없습니다.<br>매주 파일을 업로드하면 자동으로 누적됩니다.</div>
       </div>
     </div>`;
     return;
   }
 
-  const labels = history.map(h=>h.period.slice(5,10).replace('.','/') + '~' + h.period.slice(-5).replace('.','/'));
-  const kbsPcts = history.map(h=>parseFloat(h.shares.KBS.toFixed(2)));
-  const mbcPcts = history.map(h=>parseFloat(h.shares.MBC.toFixed(2)));
-  const sbsPcts = history.map(h=>parseFloat(h.shares.SBS.toFixed(2)));
-  const totals  = history.map(h=>h.totalAll);
-  const kbsNew  = history.map(h=>(h.kNO.new/h.totals.KBS*100).toFixed(1));
-  const kbsOld  = history.map(h=>(h.kNO.old/h.totals.KBS*100).toFixed(1));
+  const labels = history.map(h=>{
+    const s=h.period; return s.slice(5,10).replace('.','/');
+  });
+  const kbsPcts = history.map(h=>+h.shares.KBS.toFixed(2));
+  const mbcPcts = history.map(h=>+h.shares.MBC.toFixed(2));
+  const sbsPcts = history.map(h=>+h.shares.SBS.toFixed(2));
+  const totalsArr = history.map(h=>h.totalAll);
+  const kbsNewArr = history.map(h=>(h.kNO.new/h.totals.KBS*100).toFixed(1));
+  const kbsOldArr = history.map(h=>(h.kNO.old/h.totals.KBS*100).toFixed(1));
 
-  // 전주 대비 KBS 증감
-  const lastKbs  = kbsPcts[kbsPcts.length-1];
-  const prevKbs  = kbsPcts.length>=2 ? kbsPcts[kbsPcts.length-2] : null;
-  const kbsDelta = prevKbs !== null ? (lastKbs-prevKbs).toFixed(2) : null;
-  const deltaHtml = kbsDelta !== null
-    ? `<span style="color:${kbsDelta>=0?'var(--up)':'var(--dn)'};font-size:12px">${kbsDelta>=0?'▲':'▼'}${Math.abs(kbsDelta)}%p 전주 대비</span>`
-    : '';
-
-  // 최고/최저 KBS 주차
+  const lastKbs = kbsPcts[kbsPcts.length-1];
+  const prevKbs = kbsPcts.length>=2 ? kbsPcts[kbsPcts.length-2] : null;
+  const kbsDelta = prevKbs!==null ? (lastKbs-prevKbs).toFixed(2) : null;
+  const deltaHtml = kbsDelta!==null
+    ? `<span style="color:${kbsDelta>=0?'var(--up)':'var(--dn)'}">${kbsDelta>=0?'▲':'▼'}${Math.abs(kbsDelta)}%p 전주 대비</span>`
+    : '첫 번째 주차';
   const maxIdx = kbsPcts.indexOf(Math.max(...kbsPcts));
   const minIdx = kbsPcts.indexOf(Math.min(...kbsPcts));
+  const storageType = window.storage ? '☁️ 팀 공유' : '💻 로컬 브라우저';
 
-  // 이력 테이블 행
-  const histRows = [...history].reverse().map((h,i)=>{
-    const prev = history.length-1-i >= 1 ? history[history.length-2-i] : null;
+  const histRows = [...history].reverse().map((h,i,arr)=>{
+    const prev = arr[i+1];
     const delta = prev ? (h.shares.KBS - prev.shares.KBS).toFixed(2) : '—';
-    const deltaColor = delta==='—'?'var(--tx3)':parseFloat(delta)>=0?'var(--up)':'var(--dn)';
-    const deltaStr = delta==='—'?'—':`${parseFloat(delta)>=0?'▲':'▼'}${Math.abs(delta)}%p`;
+    const dc = delta==='—'?'var(--tx3)':parseFloat(delta)>=0?'var(--up)':'var(--dn)';
+    const ds = delta==='—'?'—':`${parseFloat(delta)>=0?'▲':'▼'}${Math.abs(delta)}%p`;
     return `<tr>
       <td style="font-family:'DM Mono',monospace;font-size:11px">${h.period}</td>
       <td class="nc">${nn(h.totalAll)}</td>
       <td class="nc" style="color:var(--kbs);font-weight:600">${h.shares.KBS.toFixed(2)}%</td>
       <td class="nc" style="color:var(--mbc)">${h.shares.MBC.toFixed(2)}%</td>
       <td class="nc" style="color:var(--sbs)">${h.shares.SBS.toFixed(2)}%</td>
-      <td class="nc" style="color:${deltaColor};font-size:11px">${deltaStr}</td>
-      <td><button onclick="deleteWeek('${h.period}')" style="background:none;border:1px solid var(--bd2);color:var(--tx3);padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer">삭제</button></td>
+      <td class="nc" style="color:${dc}">${ds}</td>
+      <td><button onclick="deleteWeek('${h.period}')" style="background:none;border:1px solid var(--bd2);color:var(--tx3);padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer;font-family:'Noto Sans KR',sans-serif">삭제</button></td>
     </tr>`;
   }).join('');
 
-  const storageType = window.storage ? '☁️ 팀 공유 저장소' : '💻 로컬 브라우저';
-  const storageColor = window.storage ? 'var(--up)' : 'var(--sbs)';
   el.innerHTML = `
   <div class="sec">
     <div class="sec-hd">
       <span class="sec-num">01 ·</span>
       <span class="sec-title">주차별 누적 트렌드</span>
-      <span class="sec-sub" style="color:${storageColor}">${storageType} · ${history.length}주 누적</span>
+      <span class="sec-sub" style="color:${window.storage?'var(--up)':'var(--sbs)'}">${storageType} · ${history.length}주 누적</span>
     </div>
     <div class="metric-strip" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
-      <div class="mc">
-        <div class="mc-label">최근 KBS 점유율</div>
-        <div class="mc-val" style="color:var(--kbs)">${lastKbs.toFixed(2)}%</div>
-        <div class="mc-sub">${deltaHtml||'첫 번째 주차'}</div>
-      </div>
-      <div class="mc">
-        <div class="mc-label">KBS 최고 주차</div>
-        <div class="mc-val" style="color:var(--up);font-size:18px">${kbsPcts[maxIdx].toFixed(2)}%</div>
-        <div class="mc-sub">${history[maxIdx].period.slice(5,10)}</div>
-      </div>
-      <div class="mc">
-        <div class="mc-label">KBS 최저 주차</div>
-        <div class="mc-val" style="color:var(--dn);font-size:18px">${kbsPcts[minIdx].toFixed(2)}%</div>
-        <div class="mc-sub">${history[minIdx].period.slice(5,10)}</div>
-      </div>
-      <div class="mc">
-        <div class="mc-label">누적 주차 수</div>
-        <div class="mc-val" style="color:var(--acc)">${history.length}주</div>
-        <div class="mc-sub">최대 52주 보관</div>
-      </div>
+      <div class="mc"><div class="mc-label">최근 KBS 점유율</div><div class="mc-val" style="color:var(--kbs)">${lastKbs.toFixed(2)}%</div><div class="mc-sub">${deltaHtml}</div></div>
+      <div class="mc"><div class="mc-label">KBS 최고 주차</div><div class="mc-val" style="color:var(--up);font-size:18px">${kbsPcts[maxIdx].toFixed(2)}%</div><div class="mc-sub">${history[maxIdx].period.slice(5,10)}</div></div>
+      <div class="mc"><div class="mc-label">KBS 최저 주차</div><div class="mc-val" style="color:var(--dn);font-size:18px">${kbsPcts[minIdx].toFixed(2)}%</div><div class="mc-sub">${history[minIdx].period.slice(5,10)}</div></div>
+      <div class="mc"><div class="mc-label">누적 주차</div><div class="mc-val" style="color:var(--acc)">${history.length}주</div><div class="mc-sub">최대 52주 보관</div></div>
     </div>
-    <!-- 3사 점유율 추이 — 메인 차트 -->
     <div class="chart-box" style="margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div class="chart-lbl" style="font-size:13px;font-weight:600;color:var(--tx)">3사 점유율 주간 추이 (%)</div>
+        <div class="chart-lbl" style="font-size:13px;color:var(--tx)">3사 점유율 주간 추이 (%)</div>
         <div style="display:flex;gap:12px;font-size:11px">
           <span style="color:var(--kbs)">● KBS</span>
           <span style="color:var(--mbc)">● MBC</span>
@@ -1100,49 +1028,37 @@ async function renderTrend(){
       </div>
       <div class="chart-wrap" style="height:220px"><canvas id="ch-trend-share"></canvas></div>
     </div>
-    <!-- 총 이용건수 + KBS 신구작 — 2열 -->
     <div class="chart-grid" style="margin-bottom:12px">
-      <div class="chart-box">
-        <div class="chart-lbl">총 이용건수 추이</div>
-        <div class="chart-wrap" style="height:140px"><canvas id="ch-trend-total"></canvas></div>
-      </div>
-      <div class="chart-box">
-        <div class="chart-lbl">KBS 신작 / 구작 점유율 추이 (%)</div>
-        <div class="chart-wrap" style="height:140px"><canvas id="ch-trend-newold"></canvas></div>
-      </div>
+      <div class="chart-box"><div class="chart-lbl">총 이용건수 추이</div><div class="chart-wrap" style="height:140px"><canvas id="ch-trend-total"></canvas></div></div>
+      <div class="chart-box"><div class="chart-lbl">KBS 신작 / 구작 추이 (%)</div><div class="chart-wrap" style="height:140px"><canvas id="ch-trend-newold"></canvas></div></div>
     </div>
   </div>
   <div class="sec">
     <div class="sec-hd">
-      <span class="sec-num">02 ·</span>
-      <span class="sec-title">주차별 이력</span>
+      <span class="sec-num">02 ·</span><span class="sec-title">주차별 이력</span>
       <span class="sec-sub" style="cursor:pointer;color:var(--dn)" onclick="clearAllHistory()">🗑 전체 삭제</span>
     </div>
     <div class="tbl-wrap">
       <table><thead><tr>
-        <th>기간</th>
-        <th style="text-align:right">총 이용건수</th>
+        <th>기간</th><th style="text-align:right">총 이용건수</th>
         <th style="text-align:right;color:var(--kbs)">KBS</th>
         <th style="text-align:right;color:var(--mbc)">MBC</th>
         <th style="text-align:right;color:var(--sbs)">SBS</th>
-        <th style="text-align:right">KBS 전주대비</th>
-        <th></th>
+        <th style="text-align:right">KBS 전주대비</th><th></th>
       </tr></thead>
       <tbody>${histRows}</tbody></table>
     </div>
   </div>`;
 
-  // 차트 렌더링
   setTimeout(()=>{
     mkLine('ch-trend-share', labels,
       [{label:'KBS',data:kbsPcts,color:'#e85d4a'},
        {label:'MBC',data:mbcPcts,color:'#4caf7d'},
        {label:'SBS',data:sbsPcts,color:'#f0b429'}]);
-    mkLine('ch-trend-total', labels,
-      [{label:'총 이용건수',data:totals,color:'#4f8ef7',fill:true}]);
+    mkLine('ch-trend-total', labels, [{label:'총 이용건수',data:totalsArr,color:'#4f8ef7',fill:true}]);
     mkLine('ch-trend-newold', labels,
-      [{label:'KBS 신작',data:kbsNew,color:'#e85d4a'},
-       {label:'KBS 구작',data:kbsOld,color:'rgba(232,93,74,.35)'}]);
+      [{label:'KBS 신작',data:kbsNewArr,color:'#e85d4a'},
+       {label:'KBS 구작',data:kbsOldArr,color:'rgba(232,93,74,.4)'}]);
   }, 100);
 }
 
