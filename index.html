@@ -1063,6 +1063,18 @@ async function renderTrend(){
 }
 
 
+function printJsp(){
+  // 지상파 월정액 탭 활성화
+  const btn=document.getElementById('tab-jsp');
+  showPage('p-jsp',btn);
+  // 차트 resize 후 인쇄 (깨짐 방지)
+  setTimeout(()=>{
+    Object.values(CHS).forEach(c=>{try{c.resize();}catch(e){}});
+    setTimeout(()=>window.print(),300);
+  },200);
+}
+
+
 function resetApp(){
   ['kbs','mbc','sbs','ppv','km'].forEach(k=>{
     S[k]=null;
