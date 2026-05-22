@@ -8,9 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
 <script>
-// datalabels는 기본 전역 등록 안 함 — mkStackedBarLabeled에서만 사용
 Chart.register(ChartDataLabels);
-// 전역 기본값: datalabels 비활성화 (개별 차트에서만 켜기)
 Chart.defaults.plugins.datalabels = { display: false };
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -91,7 +89,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Noto Sans KR',sans-serif;
 .sig-title{font-size:11px;font-weight:700;margin-bottom:4px}
 .sig-body{font-size:11px;color:var(--tx2);line-height:1.55}
 
-/* ── TWO-COL LAYOUT — chart left, table right ── */
+/* ── TWO-COL LAYOUT ── */
 .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
 .two-col{display:grid;grid-template-columns:380px 1fr;gap:12px;align-items:start}
 .two-col-rev{display:grid;grid-template-columns:1fr 380px;gap:12px;align-items:start}
@@ -117,7 +115,6 @@ body{background:var(--bg);color:var(--tx);font-family:'Noto Sans KR',sans-serif;
 /* ── CHART BOX ── */
 .chart-box{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:14px}
 .chart-lbl{font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:8px}
-/* canvas는 반드시 이 wrapper 안에서만 크기를 가짐 */
 .chart-wrap{position:relative;width:100%;overflow:hidden}
 .chart-wrap canvas{position:absolute;top:0;left:0;width:100%!important;height:100%!important}
 
@@ -154,34 +151,21 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
 /* ── PRINT ── */
 @media print{
-  @page{
-    size: A4 portrait;
-    margin: 6mm 7mm 6mm 7mm;
-  }
-
-  /* ── 숨김 처리 ── */
+  @page{size: A4 portrait;margin: 6mm 7mm 6mm 7mm;}
   .rnav, #upload-zone, #loader { display:none!important }
   #report { display:block!important }
   .rpage { display:none!important }
   #p-jsp { display:block!important; padding:0!important; max-width:100%!important }
-
-  /* ── PDF 헤더 (인쇄 시에만 표시) ── */
   .pdf-header { display:block!important; margin-bottom:5px }
   .pdf-title { font-size:14px; font-weight:900; color:#111; letter-spacing:.02em }
   .pdf-sub { font-size:8px; color:#666; margin-top:2px }
   .pdf-line { border-top:2px solid #222; margin-top:4px }
-
-  /* ── 기본 색상·폰트 ── */
   body { background:#fff!important; color:#111!important; font-size:8px!important; line-height:1.25!important }
   * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important }
-
-  /* ── 섹션 간격 ── */
   #p-jsp > .sec { margin-bottom:4px!important; page-break-inside:avoid!important }
   .sec-hd { margin-bottom:3px!important }
   .sec-num { font-size:8px!important }
   .sec-title { font-size:10px!important; font-weight:700!important }
-
-  /* ── 헤드라인·시그널 ── */
   .headline { padding:4px 8px!important; margin-bottom:3px!important; background:#f5f5f5!important; border-left:3px solid #333!important; border:0.5px solid #ddd!important }
   .hl-tag { font-size:7px!important; color:#666!important }
   .hl-txt { font-size:8.5px!important; color:#111!important; line-height:1.35!important }
@@ -190,51 +174,26 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .sig-ico { font-size:10px!important; margin-bottom:2px!important }
   .sig-title { font-size:8px!important; font-weight:700!important; margin-bottom:1px!important }
   .sig-body { font-size:7px!important; color:#555!important }
-
-  /* ── 메트릭 카드 ── */
   .metric-strip { gap:3px!important; margin-bottom:4px!important }
   .mc { padding:3px 6px!important; background:#f5f5f5!important; border:0.5px solid #ddd!important }
   .mc-label { font-size:7px!important; color:#666!important; margin-bottom:2px!important }
   .mc-val { font-size:13px!important; font-weight:900!important; margin-bottom:0!important; line-height:1.1!important }
   .mc-sub { font-size:7px!important; color:#666!important }
-
-  /* ── 점유율 바 ── */
   .share-box { padding:5px 7px!important; background:#f5f5f5!important; border:0.5px solid #ddd!important }
   .srow { margin-bottom:3px!important }
   .sbar-bg { height:4px!important; background:#e0e0e0!important }
   .sbs-nm { font-size:8px!important; width:26px!important }
   .spct { font-size:8px!important }
   .ssub { display:none!important }
-
-  /* ── 3열 차트 레이아웃 ── */
-  #p-jsp [style*="grid-template-columns:220px"] {
-    grid-template-columns: 150px 1fr 1fr!important;
-    gap:5px!important;
-  }
-
-  /* ── 차트 깨짐 완전 방지 ── */
+  #p-jsp [style*="grid-template-columns:220px"] { grid-template-columns: 150px 1fr 1fr!important; gap:5px!important; }
   .chart-box { padding:4px 6px!important; background:#f5f5f5!important; border:0.5px solid #ddd!important }
   .chart-lbl { font-size:7px!important; margin-bottom:3px!important; color:#555!important }
-  .chart-wrap {
-    position: relative!important;
-    overflow: hidden!important;
-    display: block!important;
-    width: 100%!important;
-  }
-  .chart-wrap canvas {
-    position: static!important;
-    display: block!important;
-    width: 100%!important;
-    height: auto!important;
-    max-height: 100%!important;
-  }
-  /* 차트 높이 인쇄용 재지정 */
+  .chart-wrap { position: relative!important; overflow: hidden!important; display: block!important; width: 100%!important; }
+  .chart-wrap canvas { position: static!important; display: block!important; width: 100%!important; height: auto!important; max-height: 100%!important; }
   .chart-wrap[style*="140px"] { height:62px!important }
   .chart-wrap[style*="130px"] { height:58px!important }
   .chart-wrap[style*="200px"] { height:62px!important }
   .chart-wrap[style*="150px"] { height:62px!important }
-
-  /* ── 테이블 ── */
   .tbl-wrap { background:#fff!important; border:0.5px solid #ddd!important }
   .tbl-scroll { max-height:none!important; overflow:visible!important }
   thead { display:table-header-group!important }
@@ -244,58 +203,25 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .rn.t3 { color:#1a56c4!important }
   .badge { padding:1px 4px!important; font-size:6.5px!important }
   .nc { font-size:7.5px!important }
-  /* TOP20 전체 표시 */
   #p-jsp table tbody tr { display:table-row!important }
 }
 
 .pdf-header{ display:none }
+
 /* ── 통합 드롭존 ── */
-.dropzone-unified{
-  width:100%;max-width:920px;
-  background:var(--sur);
-  border:2px dashed var(--bd2);
-  border-radius:var(--r);
-  padding:20px 24px 16px;
-  transition:all .18s;
-  cursor:default;
-}
-.dropzone-unified.dragging{
-  border-color:var(--acc);
-  background:rgba(79,142,247,.05);
-  box-shadow:0 0 0 4px rgba(79,142,247,.15);
-}
-.dzu-inner{
-  display:flex;flex-direction:column;align-items:center;
-  padding:16px 0 14px;cursor:pointer;
-}
+.dropzone-unified{width:100%;max-width:920px;background:var(--sur);border:2px dashed var(--bd2);border-radius:var(--r);padding:20px 24px 16px;transition:all .18s;cursor:default;}
+.dropzone-unified.dragging{border-color:var(--acc);background:rgba(79,142,247,.05);box-shadow:0 0 0 4px rgba(79,142,247,.15);}
+.dzu-inner{display:flex;flex-direction:column;align-items:center;padding:16px 0 14px;cursor:pointer;}
 .dzu-inner:hover .dzu-icon{ transform:scale(1.1) }
 .dzu-icon{ font-size:32px;margin-bottom:8px;transition:transform .15s }
 .dzu-title{ font-size:14px;font-weight:700;margin-bottom:4px }
 .dzu-sub{ font-size:12px;color:var(--tx2);text-align:center;line-height:1.6 }
 .dzu-sub span{ font-size:11px;color:var(--tx3) }
-/* 파일 칩 행 */
-.dzu-chips{
-  display:grid;
-  grid-template-columns:repeat(5,1fr);
-  gap:8px;
-  margin-top:14px;
-  padding-top:14px;
-  border-top:1px solid var(--bd);
-}
-.dzu-chip{
-  background:var(--sur2);
-  border:1px solid var(--bd2);
-  border-radius:6px;
-  padding:8px 10px;
-  display:flex;flex-direction:column;gap:3px;
-  transition:all .15s;
-}
+.dzu-chips{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);}
+.dzu-chip{background:var(--sur2);border:1px solid var(--bd2);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:3px;transition:all .15s;}
 .dzu-chip.done{ border-color:var(--up);background:rgba(76,175,125,.08) }
 .dzu-chip.opt{ border-style:dashed }
-.chip-bs{
-  font-size:10px;font-weight:700;font-family:'DM Mono',monospace;
-  padding:1px 6px;border-radius:3px;display:inline-block;width:fit-content;
-}
+.chip-bs{font-size:10px;font-weight:700;font-family:'DM Mono',monospace;padding:1px 6px;border-radius:3px;display:inline-block;width:fit-content;}
 .chip-bs.kbs{ background:rgba(232,93,74,.15);color:var(--kbs) }
 .chip-bs.mbc{ background:rgba(76,175,125,.15);color:var(--mbc) }
 .chip-bs.sbs{ background:rgba(240,180,41,.15);color:var(--sbs) }
@@ -304,13 +230,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .chip-label{ font-size:10px;color:var(--tx2) }
 .chip-status{ font-size:9px;color:var(--tx3);font-family:'DM Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
 .dzu-chip.done .chip-status{ color:var(--up) }
-
-
-/* 드래그앤드롭 피드백 */
 #drop-area.drag-over-all{ outline:2px dashed var(--acc); outline-offset:6px; border-radius:10px }
 .fc.drag-hover{ border-color:var(--acc)!important; background:rgba(79,142,247,.1)!important; transform:scale(1.02); transition:all .15s }
-
-/* 트렌드 탭 구분선 */
 #tab-trend{ border-left:1px solid var(--bd2); margin-left:4px; padding-left:16px }
 
 @media(max-width:900px){
@@ -337,8 +258,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
   <h1 class="hero">주간 리포트<br><span>자동 생성기</span></h1>
   <p class="hero-sub">파일 업로드 → 즉시 분석 리포트 생성<br>PDF 저장 · 팀 공유 가능</p>
 
-  <!-- 드래그앤드롭: 전체 영역 + 개별 카드 클릭 모두 지원 -->
-  <!-- 통합 드롭존: 5개 파일 한꺼번에 드래그앤드롭 -->
   <div class="dropzone-unified" id="drop-area">
     <input type="file" id="file-input-main" accept=".xlsx,.xls" multiple style="display:none" onchange="handleFiles(event.target.files)">
     <div class="dzu-inner" onclick="document.getElementById('file-input-main').click()">
@@ -347,7 +266,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="dzu-sub">KBS·MBC·SBS 지상파월정액 + KBS 주간 매출 자료 + KBS 월정액<br>
         <span>파일명으로 자동 분류 · 최대 5개 동시 업로드</span></div>
     </div>
-    <!-- 업로드된 파일 상태 칩 -->
     <div class="dzu-chips" id="dzu-chips">
       <div class="dzu-chip" id="chip-kbs"><span class="chip-bs kbs">KBS</span><span class="chip-label">지상파월정액</span><span class="chip-status" id="cs-kbs">대기중</span></div>
       <div class="dzu-chip" id="chip-mbc"><span class="chip-bs mbc">MBC</span><span class="chip-label">지상파월정액</span><span class="chip-status" id="cs-mbc">대기중</span></div>
@@ -356,7 +274,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="dzu-chip" id="chip-km"><span class="chip-bs km">KBS</span><span class="chip-label">월정액</span><span class="chip-status" id="cs-km">선택사항</span></div>
     </div>
   </div>
-    <div class="sec-note" style="max-width:920px;margin-top:8px">🔒 업로드한 파일은 <b>브라우저 내 메모리에서만</b> 처리되며 외부 서버로 전송되지 않습니다.</div>
+  <div class="sec-note" style="max-width:920px;margin-top:8px">🔒 업로드한 파일은 <b>브라우저 내 메모리에서만</b> 처리되며 외부 서버로 전송되지 않습니다.</div>
   <button class="gen-btn" id="gen-btn" onclick="generateReport()">리포트 생성하기 →</button>
 </div>
 
@@ -382,7 +300,19 @@ tr:hover td{background:rgba(255,255,255,.02)}
 const S={kbs:null,mbc:null,sbs:null,ppv:null,km:null};
 const CHS={};
 
-// 파일명으로 종류 자동 구분
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// [버그2 수정] HTML 특수문자 이스케이프 함수
+// '<사우나 토크>' 등 꺾쇠 포함 타이틀이 innerHTML에 삽입되면
+// HTML 태그로 해석되어 렌더링이 깨지는 문제를 방지
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function esc(str){
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
 function classifyFile(name){
   const n=name.toLowerCase();
   if(n.includes('kbs') && n.includes('월정액') && !n.includes('지상파') && !n.includes('매출')) return 'km';
@@ -431,7 +361,7 @@ function handleFiles(files){
       const ws=wb.Sheets[wb.SheetNames[Math.min(sheetIdx,wb.SheetNames.length-1)]];
       S[key]={name:f.name,raw:XLSX.utils.sheet_to_json(ws,{header:1,defval:''})};
       renderChips();
-  ['ppv','km'].forEach(k=>{const c=document.getElementById('chip-'+k);if(c)c.classList.add('opt');});
+      ['ppv','km'].forEach(k=>{const c=document.getElementById('chip-'+k);if(c)c.classList.add('opt');});
       if(S.kbs&&S.mbc&&S.sbs)document.getElementById('gen-btn').classList.add('ready');
     };
     rd.readAsArrayBuffer(f);
@@ -441,11 +371,9 @@ function handleFiles(files){
   }
 }
 
-// ── 드래그앤드롭: 전체 영역 + 각 카드 개별 피드백 ──
 document.addEventListener('DOMContentLoaded',()=>{
   const da=document.getElementById('drop-area');
   if(!da)return;
-  // 옵션 칩 초기 표시
   ['ppv','km'].forEach(k=>{
     const c=document.getElementById('chip-'+k);
     if(c)c.classList.add('opt');
@@ -464,41 +392,62 @@ function showPage(id,btn){
   document.querySelectorAll('.rpage').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('active'));
   document.getElementById(id).classList.add('active');btn.classList.add('active');
-  if(id==='p-trend') renderTrend(); // 탭 진입 시 최신 공유 데이터 로드
+  if(id==='p-trend') renderTrend();
 }
 
 function setLoader(msg,pct){document.getElementById('ld-msg').textContent=msg;document.getElementById('ld-fill').style.width=pct+'%';}
-function tick(){return new Promise(r=>setTimeout(r,50));}
+function tick(){return new Promise(r=>setTimeout(r,0));}  // [버그1 수정] 50ms→0ms: 루프 사이 매 tick마다 UI 업데이트 기회 제공
 const nn=v=>Math.round(v).toLocaleString();
 const pp=v=>v.toFixed(2)+'%';
 const fmt=d=>`${d.slice(0,4)}.${d.slice(4,6)}.${d.slice(6,8)}`;
 const sm=rows=>rows.reduce((s,r)=>s+(r.views||0),0);
 
-function parseTppm(raw,bs){
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// [버그1 수정] 청크 단위 비동기 파싱
+// 147,000행을 한 번에 동기 루프로 처리하면 메인 스레드가 수십 초간
+// 완전히 멈춰 로더 애니메이션도 멈추고 "계산 안됨"처럼 보임.
+// 5,000행 단위로 잘라 매 청크마다 tick()으로 UI에 제어권 반환.
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function parseTppm(raw, bs, onProgress){
   const rows=[];
-  for(let i=2;i<raw.length;i++){
-    const r=raw[i];
-    if(!r[4]||String(r[4]).includes('시리즈명'))continue;
-    const v=parseFloat(r[8])||0,d=String(r[0]||'').replace(/\D/g,'').slice(0,8);
-    const air=String(r[6]||'').replace(/\D/g,''),ay=air.length>=4?parseInt(air.slice(0,4)):null;
-    if(v>0&&d.length===8)rows.push({bs,date:d,title:String(r[4]).trim(),views:v,airyear:ay});
+  const CHUNK=5000;
+  for(let i=2; i<raw.length; i+=CHUNK){
+    const end=Math.min(i+CHUNK, raw.length);
+    for(let j=i; j<end; j++){
+      const r=raw[j];
+      if(!r[4]||String(r[4]).includes('시리즈명'))continue;
+      const v=parseFloat(r[8])||0;
+      const d=String(r[0]||'').replace(/\D/g,'').slice(0,8);
+      const air=String(r[6]||'').replace(/\D/g,'');
+      const ay=air.length>=4?parseInt(air.slice(0,4)):null;
+      if(v>0&&d.length===8)rows.push({bs,date:d,title:String(r[4]).trim(),views:v,airyear:ay});
+    }
+    if(onProgress) onProgress(end/raw.length);
+    await tick(); // 청크 완료마다 UI 스레드에 제어권 반환
   }
   return rows;
 }
-function parsePpv(raw){
+
+async function parsePpv(raw){
   const rows=[];
-  for(let i=2;i<raw.length;i++){
-    const r=raw[i];
-    if(!r[5]||String(r[5]).includes('시리즈명'))continue;
-    const b=parseFloat(r[8])||0,rv=parseFloat(r[9])||0;
-    const d=String(r[0]||'').replace(/\D/g,'').slice(0,8);
-    const air=String(r[7]||'').replace(/\D/g,''),ay=air.length>=4?parseInt(air.slice(0,4)):null;
-    if(b>0&&d.length===8)rows.push({date:d,title:String(r[5]).trim(),buys:b,rev:rv,airyear:ay});
+  const CHUNK=5000;
+  for(let i=2; i<raw.length; i+=CHUNK){
+    const end=Math.min(i+CHUNK, raw.length);
+    for(let j=i; j<end; j++){
+      const r=raw[j];
+      if(!r[5]||String(r[5]).includes('시리즈명'))continue;
+      const b=parseFloat(r[8])||0,rv=parseFloat(r[9])||0;
+      const d=String(r[0]||'').replace(/\D/g,'').slice(0,8);
+      const air=String(r[7]||'').replace(/\D/g,'');
+      const ay=air.length>=4?parseInt(air.slice(0,4)):null;
+      if(b>0&&d.length===8)rows.push({date:d,title:String(r[5]).trim(),buys:b,rev:rv,airyear:ay});
+    }
+    await tick();
   }
   return rows;
 }
+
 function parseKm(raw){
-  // 회차별 행을 시리즈명 기준으로 합산
   const map={};
   for(let i=4;i<raw.length;i++){
     const r=raw[i];
@@ -510,6 +459,7 @@ function parseKm(raw){
     .map(([title,views])=>({title,views}))
     .sort((a,b)=>b.views-a.views);
 }
+
 function groupBy(arr,keyFn,init,merge){
   const m={};
   arr.forEach(r=>{const k=keyFn(r);if(!m[k])m[k]={...init};merge(m[k],r);});
@@ -519,16 +469,26 @@ function groupBy(arr,keyFn,init,merge){
 async function generateReport(){
   document.getElementById('loader').style.display='flex';
   Object.values(CHS).forEach(c=>{try{c.destroy();}catch(e){}});
-  await tick();setLoader('KBS 파싱...',15);await tick();
-  const kbs=parseTppm(S.kbs.raw,'KBS');
-  setLoader('MBC 파싱...',32);await tick();const mbc=parseTppm(S.mbc.raw,'MBC');
-  setLoader('SBS 파싱...',48);await tick();const sbs=parseTppm(S.sbs.raw,'SBS');
+
+  // [버그1 수정] 각 파일 파싱 진행률을 로더에 반영
+  setLoader('KBS 파싱... (0%)', 10); await tick();
+  const kbs=await parseTppm(S.kbs.raw,'KBS', p=>setLoader(`KBS 파싱... (${Math.round(p*100)}%)`, 10+p*15));
+
+  setLoader('MBC 파싱... (0%)', 25); await tick();
+  const mbc=await parseTppm(S.mbc.raw,'MBC', p=>setLoader(`MBC 파싱... (${Math.round(p*100)}%)`, 25+p*20));
+
+  setLoader('SBS 파싱... (0%)', 45); await tick();
+  const sbs=await parseTppm(S.sbs.raw,'SBS', p=>setLoader(`SBS 파싱... (${Math.round(p*100)}%)`, 45+p*15));
+
   let ppv=null,km=null;
-  if(S.ppv){setLoader('PPV 파싱...',62);await tick();ppv=parsePpv(S.ppv.raw);}
-  if(S.km){setLoader('KBS월정액 파싱...',75);await tick();km=parseKm(S.km.raw);}
-  setLoader('계산 중...',90);await tick();
+  if(S.ppv){setLoader('PPV 파싱...',62);await tick();ppv=await parsePpv(S.ppv.raw);}
+  if(S.km){setLoader('KBS월정액 파싱...',72);await tick();km=parseKm(S.km.raw);}
+
+  setLoader('계산 중...',88); await tick();
   buildAll(kbs,mbc,sbs,ppv,km);
-  setLoader('완료!',100);await new Promise(r=>setTimeout(r,280));
+
+  setLoader('완료!',100);
+  await new Promise(r=>setTimeout(r,280));
   document.getElementById('loader').style.display='none';
   document.getElementById('upload-zone').style.display='none';
   if(ppv||km)document.getElementById('tab-ppv').style.display='inline-block';
@@ -562,12 +522,9 @@ function buildAll(kbs,mbc,sbs,ppv,km){
   document.getElementById('p-km').innerHTML=renderKm(km,kbsTop,totals,totalAll);
   if(ppv){ document.getElementById('tab-ppv').style.display='inline-block'; document.getElementById('p-ppv').innerHTML=renderPpv(ppv,kbsTop,km); }
 
-
-  // ── 주차 데이터 localStorage 저장 ──
   try{ saveWeekData({period, totalAll, shares, kNO, mNO, sNO, totals, top20: top20.slice(0,5)}); }catch(e){ console.warn('데이터 저장 실패:',e); }
 
   setTimeout(()=>{
-    /* 지상파 월정액 차트 */
     mkLine('ch-daily',dates.map(d=>`${d.slice(4,6)}/${d.slice(6,8)}`),
       [{label:'KBS',data:dates.map(d=>daily.KBS[d]||0),color:'#e85d4a'},
        {label:'MBC',data:dates.map(d=>daily.MBC[d]||0),color:'#4caf7d'},
@@ -577,22 +534,18 @@ function buildAll(kbs,mbc,sbs,ppv,km){
       [kNO.new,mNO.new,sNO.new,kNO.old,mNO.old,sNO.old],
       ['rgba(232,93,74,.85)','rgba(76,175,125,.85)','rgba(240,180,41,.85)',
        'rgba(232,93,74,.3)','rgba(76,175,125,.3)','rgba(240,180,41,.3)']);
-    /* KBS 월정액 차트 */
     if(km){
       const t5=km.slice(0,5);
       mkHBar('ch-km-top5',t5.map(p=>p.title.length>9?p.title.slice(0,9)+'…':p.title),t5.map(p=>p.views),'#38bdf8');
     }
-    /* PPV 차트 */
     if(ppv){
       const pm={};ppv.forEach(r=>pm[r.title]=(pm[r.title]||0)+r.buys);
       const pt=Object.entries(pm).sort((a,b)=>b[1]-a[1]).slice(0,8);
       mkHBar('ch-ppv-top',pt.map(([t])=>t.length>9?t.slice(0,9)+'…':t),pt.map(([,v])=>v),'#a78bfa');
-      // 요일별 이용현황
       const DOW=['일','월','화','수','목','금','토'];
       const dowBuys=Array(7).fill(0);
       ppv.forEach(r=>{
         const d=r.date;if(!d||d.length<8)return;
-        // 날짜로 요일 계산
         const dt=new Date(parseInt(d.slice(0,4)),parseInt(d.slice(4,6))-1,parseInt(d.slice(6,8)));
         dowBuys[dt.getDay()]+=r.buys;
       });
@@ -602,7 +555,6 @@ function buildAll(kbs,mbc,sbs,ppv,km){
 }
 
 /* ── CHART HELPERS ── */
-// chart-wrap div가 height를 고정 → canvas는 position:absolute로 100% 채움
 function mkLine(id,labels,datasets){
   const c=document.getElementById(id);if(!c)return;
   if(CHS[id])try{CHS[id].destroy();}catch(e){}
@@ -636,8 +588,6 @@ function mkHBar(id,labels,data,color){
     scales:{x:{ticks:{color:'#5a6170',font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'천':v},grid:{color:'rgba(255,255,255,.04)'}},
             y:{ticks:{color:'#9299a8',font:{size:10}},grid:{display:false}}}}});
 }
-
-/* ── stacked bar with data labels ── */
 function mkStackedBarLabeled(id,labels,newPct,oldPct,newAbs,oldAbs){
   const c=document.getElementById(id);if(!c)return;
   if(CHS[id])try{CHS[id].destroy();}catch(e){}
@@ -658,8 +608,6 @@ function mkStackedBarLabeled(id,labels,newPct,oldPct,newAbs,oldAbs){
     }
   }});
 }
-
-/* ── grouped bar absolute ── */
 function mkGroupedBarAbsolute(id,labels,data,colors){
   const c=document.getElementById(id);if(!c)return;
   if(CHS[id])try{CHS[id].destroy();}catch(e){}
@@ -670,65 +618,57 @@ function mkGroupedBarAbsolute(id,labels,data,colors){
       datasets:[
         {label:'신작',data:[data[0],data[1],data[2]],
          backgroundColor:[colors[0],colors[1],colors[2]],borderRadius:3,
-         datalabels:{
-           display:true, anchor:'end', align:'end', offset:2,
+         datalabels:{display:true,anchor:'end',align:'end',offset:2,
            formatter:(v)=>v>0?(v/total*100).toFixed(1)+'%\n'+nn(v):'',
-           color:'#9299a8', font:{size:8}, textAlign:'center'
-         }},
+           color:'#9299a8',font:{size:8},textAlign:'center'}},
         {label:'구작',data:[data[3],data[4],data[5]],
          backgroundColor:[colors[3],colors[4],colors[5]],borderRadius:3,
-         datalabels:{
-           display:true, anchor:'end', align:'end', offset:2,
+         datalabels:{display:true,anchor:'end',align:'end',offset:2,
            formatter:(v)=>v>0?(v/total*100).toFixed(1)+'%\n'+nn(v):'',
-           color:'#5a6170', font:{size:8}, textAlign:'center'
-         }},
+           color:'#5a6170',font:{size:8},textAlign:'center'}},
       ]
     },
     options:{responsive:true,maintainAspectRatio:false,
-      layout:{padding:{top:46, left:4, right:4}},
+      layout:{padding:{top:46,left:4,right:4}},
       plugins:{
-        legend:{
-          position:'bottom',
-          labels:{color:'#9299a8',font:{size:10},boxWidth:10,padding:8}
-        },
+        legend:{position:'bottom',labels:{color:'#9299a8',font:{size:10},boxWidth:10,padding:8}},
         datalabels:{display:true}
       },
       scales:{
         x:{ticks:{color:'#5a6170',font:{size:11}},grid:{display:false}},
-        y:{
-          ticks:{color:'#5a6170',font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'천':v},
-          grid:{color:'rgba(255,255,255,.04)'}
-        }
+        y:{ticks:{color:'#5a6170',font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'천':v},grid:{color:'rgba(255,255,255,.04)'}}
       }
     }
   });
 }
 
-/* ── RENDER: JSP (지상파 월정액) ── */function renderJsp(totalAll,totals,shares,kNO,mNO,sNO,top20,dates,daily,period){
+/* ── RENDER: JSP ── */
+function renderJsp(totalAll,totals,shares,kNO,mNO,sNO,top20,dates,daily,period){
   const top1=top20[0],kbsTop1=top20.find(r=>r.bs==='KBS'),mbcTop1=top20.find(r=>r.bs==='MBC');
   const kOldP=(kNO.old/totals.KBS*100).toFixed(1),mOldP=(mNO.old/totals.MBC*100).toFixed(1);
   const dayTots=dates.map(d=>['KBS','MBC','SBS'].reduce((s,bs)=>s+(daily[bs][d]||0),0));
   const mx=Math.max(...dayTots),mn=Math.min(...dayTots);
-  const hl=`이번 주 3사 합계 <b>${nn(totalAll)}건</b>. ${top1.bs} <b>"${top1.title}"</b> ${nn(top1.views)}건으로 전체 1위. KBS <b>${shares.KBS.toFixed(2)}%</b> · MBC <b>${shares.MBC.toFixed(2)}%</b> · SBS <b>${shares.SBS.toFixed(2)}%</b>. MBC 구작 비율 ${mOldP}%가 점유율 확대 주요 배경.`;
+  // [버그2 수정] 타이틀에 esc() 적용
+  const hl=`이번 주 3사 합계 <b>${nn(totalAll)}건</b>. ${esc(top1.bs)} <b>"${esc(top1.title)}"</b> ${nn(top1.views)}건으로 전체 1위. KBS <b>${shares.KBS.toFixed(2)}%</b> · MBC <b>${shares.MBC.toFixed(2)}%</b> · SBS <b>${shares.SBS.toFixed(2)}%</b>. MBC 구작 비율 ${mOldP}%가 점유율 확대 주요 배경.`;
   const sigs=[
-    {ico:'📊',title:`KBS↔MBC 1위 격차 ${nn(mbcTop1.views-kbsTop1.views)}건`,body:`KBS "${kbsTop1.title}" ${nn(kbsTop1.views)}건 vs MBC "${mbcTop1.title}" ${nn(mbcTop1.views)}건`},
+    {ico:'📊',title:`KBS↔MBC 1위 격차 ${nn(mbcTop1.views-kbsTop1.views)}건`,body:`KBS "${esc(kbsTop1.title)}" ${nn(kbsTop1.views)}건 vs MBC "${esc(mbcTop1.title)}" ${nn(mbcTop1.views)}건`},
     {ico:'📚',title:`구작 KBS ${kOldP}% vs MBC ${mOldP}%`,body:`${(parseFloat(mOldP)-parseFloat(kOldP)).toFixed(1)}%p 격차. 라이브러리 큐레이션 강화 여지.`},
     {ico:'📅',title:`일별 최대 ${nn(mx)} / 최소 ${nn(mn)}건`,body:`차이 ${((mx/mn-1)*100).toFixed(0)}%. 주말 방영 콘텐츠가 스파이크 주도.`},
   ];
+  // [버그2 수정] 테이블 타이틀에 esc() 적용
   const t20=top20.map((r,i)=>`<tr>
     <td><span class="rn ${i<3?'t3':''}">${String(i+1).padStart(2,'0')}</span></td>
-    <td><span class="badge b${r.bs.toLowerCase()}">${r.bs}</span></td>
-    <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title}</td>
+    <td><span class="badge b${r.bs.toLowerCase()}">${esc(r.bs)}</span></td>
+    <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.title)}</td>
     <td><span class="badge ${r.airyear&&r.airyear<=2022?'bold':'bnew'}">${r.airyear&&r.airyear<=2022?'구':'신'}</span></td>
     <td class="nc">${nn(r.views)}</td>
     <td class="nc">${pp(r.views/totalAll*100)}</td>
   </tr>`).join('');
 
   return `
-  <!-- PDF 인쇄 시에만 보이는 헤더 -->
   <div class="pdf-header">
     <div class="pdf-title">주간 TV-VOD 이용현황</div>
-    <div class="pdf-sub">기준 기간: ${period} &nbsp;|&nbsp; 방송3사 지상파 통합월정액(PPM3) 기준 &nbsp;|&nbsp; SK Btv</div>
+    <div class="pdf-sub">기준 기간: ${esc(period)} &nbsp;|&nbsp; 방송3사 지상파 통합월정액(PPM3) 기준 &nbsp;|&nbsp; SK Btv</div>
     <div class="pdf-line"></div>
   </div>
   <div class="sec">
@@ -736,7 +676,6 @@ function mkGroupedBarAbsolute(id,labels,data,colors){
     <div class="headline"><div class="hl-tag">WEEKLY HEADLINE</div><div class="hl-txt">${hl}</div></div>
     <div class="sig-grid">${sigs.map(s=>`<div class="sig"><div class="sig-ico">${s.ico}</div><div class="sig-title">${s.title}</div><div class="sig-body">${s.body}</div></div>`).join('')}</div>
   </div>
-
   <div class="sec">
     <div class="sec-hd"><span class="sec-num">02 ·</span><span class="sec-title">방송사별 점유율</span></div>
     <div class="metric-strip">
@@ -745,9 +684,7 @@ function mkGroupedBarAbsolute(id,labels,data,colors){
       <div class="mc"><div class="mc-label">MBC</div><div class="mc-val" style="color:var(--mbc)">${shares.MBC.toFixed(2)}%</div><div class="mc-sub">신 ${(mNO.new/totals.MBC*100).toFixed(1)}% / 구 ${mOldP}%</div></div>
       <div class="mc"><div class="mc-label">SBS</div><div class="mc-val" style="color:var(--sbs)">${shares.SBS.toFixed(2)}%</div><div class="mc-sub">신 ${(sNO.new/totals.SBS*100).toFixed(1)}% / 구 ${(sNO.old/totals.SBS*100).toFixed(1)}%</div></div>
     </div>
-    <!-- 3열: 통합 점유율 블록 | 신구작 차트 | 일별 차트 -->
     <div style="display:grid;grid-template-columns:220px 1fr 1fr;gap:10px;align-items:start">
-      <!-- 통합 블록: 점유율 바 + 이용건수 한번에 -->
       <div class="share-box">
         <div style="font-size:10px;color:var(--tx3);letter-spacing:.06em;margin-bottom:8px">방송사별 점유율</div>
         ${[['KBS',shares.KBS,'kbs',totals.KBS],['MBC',shares.MBC,'mbc',totals.MBC],['SBS',shares.SBS,'sbs',totals.SBS]].map(([bs,s,c,tv])=>`
@@ -770,7 +707,6 @@ function mkGroupedBarAbsolute(id,labels,data,colors){
       <div class="chart-box"><div class="chart-lbl">3사 일별 시청건수 추이</div><div class="chart-wrap" style="height:160px"><canvas id="ch-daily"></canvas></div></div>
     </div>
   </div>
-
   <div class="sec">
     <div class="sec-hd"><span class="sec-num">03 ·</span><span class="sec-title">방송3사 통합월정액 VOD 시청 현황</span><span class="sec-sub">전체 시청건수 기준</span></div>
     <div class="tbl-wrap"><div class="tbl-scroll" style="max-height:460px">
@@ -785,23 +721,21 @@ function renderKm(km,kbsTop,totals,totalAll){
   if(!km||km.length===0) return `
   <div class="sec"><div class="sec-hd"><span class="sec-num">·</span><span class="sec-title">KBS 월정액</span></div>
   <div class="headline"><div class="hl-txt" style="color:var(--tx3)">KBS 월정액 파일이 업로드되지 않았습니다.</div></div></div>`;
-
   const totalKm=km.reduce((s,r)=>s+r.views,0);
+  // [버그2 수정] 타이틀에 esc() 적용
   const rows=km.slice(0,20).map((r,i)=>`<tr>
     <td><span class="rn ${i<3?'t3':''}">${String(i+1).padStart(2,'0')}</span></td>
-    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title}</td>
+    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.title)}</td>
     <td class="nc">${nn(r.views)}</td>
     <td class="nc">${pp(r.views/totalKm*100)}</td>
   </tr>`).join('');
-
   const top5=km.slice(0,5);
-
   return `
   <div class="sec">
     <div class="sec-hd"><span class="sec-num">01 ·</span><span class="sec-title">KBS 월정액 내 콘텐츠 이용현황</span><span class="sec-sub">시청건수 기준 · 시리즈 합산</span></div>
     <div class="metric-strip" style="grid-template-columns:repeat(2,1fr)">
       <div class="mc"><div class="mc-label">총 시청건수</div><div class="mc-val" style="color:var(--km)">${nn(totalKm)}</div><div class="mc-sub">KBS 월정액 기준</div></div>
-      <div class="mc"><div class="mc-label">1위 콘텐츠</div><div class="mc-val" style="font-size:16px;color:var(--km)">${km[0].title}</div><div class="mc-sub">${nn(km[0].views)}건</div></div>
+      <div class="mc"><div class="mc-label">1위 콘텐츠</div><div class="mc-val" style="font-size:16px;color:var(--km)">${esc(km[0].title)}</div><div class="mc-sub">${nn(km[0].views)}건</div></div>
     </div>
     <div class="two-col-rev">
       <div class="tbl-wrap"><div class="tbl-scroll" style="max-height:480px">
@@ -816,7 +750,6 @@ function renderKm(km,kbsTop,totals,totalAll){
 /* ── RENDER: PPV ── */
 function renderPpv(ppv,kbsTop,km){
   if(!ppv||ppv.length===0) return '';
-  // 콘텐츠별 합산
   const pm={};
   ppv.forEach(r=>{
     if(!pm[r.title])pm[r.title]={title:r.title,buys:0,rev:0,airyear:r.airyear};
@@ -826,46 +759,39 @@ function renderPpv(ppv,kbsTop,km){
   const tb=pt.reduce((s,r)=>s+r.buys,0);
   const tr=pt.reduce((s,r)=>s+r.rev,0);
   const oldB=pt.filter(r=>r.airyear&&r.airyear<=2022).reduce((s,r)=>s+r.buys,0);
-
-  // 지상파 월정액 조회용 맵
   const jspMap={};
   kbsTop.forEach(r=>jspMap[r.title.replace(/\s/g,'')]=r.views);
   const lookupJsp=title=>{
     const nk=title.replace(/\s/g,'');
     return jspMap[nk]||Object.entries(jspMap).find(([k])=>k.includes(nk.slice(0,5)))?.[1]||0;
   };
-
-  // KBS 월정액 조회용 맵
   const kmMap={};
   if(km) km.forEach(r=>kmMap[r.title.replace(/\s/g,'')]=r.views);
   const lookupKm=title=>{
     const nk=title.replace(/\s/g,'');
     return kmMap[nk]||Object.entries(kmMap).find(([k])=>k.includes(nk.slice(0,5)))?.[1]||0;
   };
-
-  // 상위 콘텐츠 테이블
+  // [버그2 수정] 타이틀에 esc() 적용
   const topRows=pt.slice(0,15).map((r,i)=>`<tr>
     <td><span class="rn ${i<3?'t3':''}">${String(i+1).padStart(2,'0')}</span></td>
-    <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title}</td>
+    <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.title)}</td>
     <td><span class="badge ${r.airyear&&r.airyear<=2022?'bold':'bnew'}">${r.airyear&&r.airyear<=2022?'구':'신'}</span></td>
     <td class="nc">${nn(r.buys)}</td>
     <td class="nc">${pp(r.buys/tb*100)}</td>
     <td class="nc">${nn(r.rev)}원</td>
   </tr>`).join('');
-
-  // 3사 비교 테이블 (PPV / KBS월정액 / 지상파월정액)
   const compareRows=pt.slice(0,12).map((r,i)=>{
     const jspV=lookupJsp(r.title);
     const kmV=lookupKm(r.title);
     return `<tr>
       <td><span class="rn ${i<3?'t3':''}">${String(i+1).padStart(2,'0')}</span></td>
-      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title}</td>
+      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.title)}</td>
       <td class="nc" style="color:var(--ppv);font-weight:600">${nn(r.buys)}</td>
       <td class="nc" style="color:var(--km)">${kmV>0?nn(kmV):'—'}</td>
       <td class="nc" style="color:var(--kbs)">${jspV>0?nn(jspV):'—'}</td>
     </tr>`;
   }).join('');
-
+  const pt0title=pt[0].title.length>8?pt[0].title.slice(0,8)+'…':pt[0].title;
   return `
   <div class="sec">
     <div class="sec-hd"><span class="sec-num">01 ·</span><span class="sec-title">PPV 단건 구매 현황</span></div>
@@ -873,7 +799,7 @@ function renderPpv(ppv,kbsTop,km){
       <div class="mc"><div class="mc-label">총 구매건수</div><div class="mc-val" style="color:var(--ppv)">${nn(tb)}</div><div class="mc-sub">KBS 콘텐츠</div></div>
       <div class="mc"><div class="mc-label">추정 매출</div><div class="mc-val" style="color:var(--ppv);font-size:18px">${nn(tr)}원</div><div class="mc-sub">편당 2,000~2,500원</div></div>
       <div class="mc"><div class="mc-label">구작 구매 비율</div><div class="mc-val" style="color:var(--ppv)">${pp(oldB/tb*100)}</div><div class="mc-sub">2022년 이전 방영</div></div>
-      <div class="mc"><div class="mc-label">1위 콘텐츠</div><div class="mc-val" style="font-size:16px;color:var(--ppv)">${pt[0].title.length>8?pt[0].title.slice(0,8)+'…':pt[0].title}</div><div class="mc-sub">${nn(pt[0].buys)}건</div></div>
+      <div class="mc"><div class="mc-label">1위 콘텐츠</div><div class="mc-val" style="font-size:16px;color:var(--ppv)">${esc(pt0title)}</div><div class="mc-sub">${nn(pt[0].buys)}건</div></div>
     </div>
     <div class="two-col">
       <div class="chart-box"><div class="chart-lbl">PPV 상위 콘텐츠 구매건수</div><div class="chart-wrap" style="height:240px"><canvas id="ch-ppv-top"></canvas></div></div>
@@ -900,10 +826,7 @@ function renderPpv(ppv,kbsTop,km){
   </div>`;
 }
 
-/* ── RENDER: 세일즈 제언 (독립 탭) ── */
-/* ══════════════════════════════════════
-   누적 트렌드: localStorage 저장 / 조회 / 렌더링
-   ══════════════════════════════════════ */
+/* ── 누적 트렌드 ── */
 const STORAGE_KEY = 'vod_weekly_history';
 
 async function saveWeekData(data){
@@ -914,11 +837,8 @@ async function saveWeekData(data){
     else history.push(data);
     history = history.sort((a,b)=>a.period.localeCompare(b.period)).slice(-52);
     const payload = JSON.stringify(history);
-    if(window.storage){
-      await window.storage.set(STORAGE_KEY, payload, true);
-    } else {
-      localStorage.setItem(STORAGE_KEY, payload);
-    }
+    if(window.storage){ await window.storage.set(STORAGE_KEY, payload, true); }
+    else { localStorage.setItem(STORAGE_KEY, payload); }
     console.log('저장됨:', data.period, '누적', history.length+'주');
   } catch(e){ console.warn('저장 실패:', e); }
 }
@@ -955,7 +875,6 @@ async function renderTrend(){
   if(!el) return;
   el.innerHTML=`<div class="sec"><div class="hl-txt" style="color:var(--tx3);text-align:center;padding:40px">데이터 불러오는 중...</div></div>`;
   const history = await loadHistory();
-
   if(history.length === 0){
     el.innerHTML = `
     <div class="sec">
@@ -967,17 +886,13 @@ async function renderTrend(){
     </div>`;
     return;
   }
-
-  const labels = history.map(h=>{
-    const s=h.period; return s.slice(5,10).replace('.','/');
-  });
+  const labels = history.map(h=>{ const s=h.period; return s.slice(5,10).replace('.','/'); });
   const kbsPcts = history.map(h=>+h.shares.KBS.toFixed(2));
   const mbcPcts = history.map(h=>+h.shares.MBC.toFixed(2));
   const sbsPcts = history.map(h=>+h.shares.SBS.toFixed(2));
   const totalsArr = history.map(h=>h.totalAll);
   const kbsNewArr = history.map(h=>(h.kNO.new/h.totals.KBS*100).toFixed(1));
   const kbsOldArr = history.map(h=>(h.kNO.old/h.totals.KBS*100).toFixed(1));
-
   const lastKbs = kbsPcts[kbsPcts.length-1];
   const prevKbs = kbsPcts.length>=2 ? kbsPcts[kbsPcts.length-2] : null;
   const kbsDelta = prevKbs!==null ? (lastKbs-prevKbs).toFixed(2) : null;
@@ -987,23 +902,21 @@ async function renderTrend(){
   const maxIdx = kbsPcts.indexOf(Math.max(...kbsPcts));
   const minIdx = kbsPcts.indexOf(Math.min(...kbsPcts));
   const storageType = window.storage ? '☁️ 팀 공유' : '💻 로컬 브라우저';
-
   const histRows = [...history].reverse().map((h,i,arr)=>{
     const prev = arr[i+1];
     const delta = prev ? (h.shares.KBS - prev.shares.KBS).toFixed(2) : '—';
     const dc = delta==='—'?'var(--tx3)':parseFloat(delta)>=0?'var(--up)':'var(--dn)';
     const ds = delta==='—'?'—':`${parseFloat(delta)>=0?'▲':'▼'}${Math.abs(delta)}%p`;
     return `<tr>
-      <td style="font-family:'DM Mono',monospace;font-size:11px">${h.period}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px">${esc(h.period)}</td>
       <td class="nc">${nn(h.totalAll)}</td>
       <td class="nc" style="color:var(--kbs);font-weight:600">${h.shares.KBS.toFixed(2)}%</td>
       <td class="nc" style="color:var(--mbc)">${h.shares.MBC.toFixed(2)}%</td>
       <td class="nc" style="color:var(--sbs)">${h.shares.SBS.toFixed(2)}%</td>
       <td class="nc" style="color:${dc}">${ds}</td>
-      <td><button onclick="deleteWeek('${h.period}')" style="background:none;border:1px solid var(--bd2);color:var(--tx3);padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer;font-family:'Noto Sans KR',sans-serif">삭제</button></td>
+      <td><button onclick="deleteWeek('${esc(h.period)}')" style="background:none;border:1px solid var(--bd2);color:var(--tx3);padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer;font-family:'Noto Sans KR',sans-serif">삭제</button></td>
     </tr>`;
   }).join('');
-
   el.innerHTML = `
   <div class="sec">
     <div class="sec-hd">
@@ -1049,7 +962,6 @@ async function renderTrend(){
       <tbody>${histRows}</tbody></table>
     </div>
   </div>`;
-
   setTimeout(()=>{
     mkLine('ch-trend-share', labels,
       [{label:'KBS',data:kbsPcts,color:'#e85d4a'},
@@ -1062,25 +974,17 @@ async function renderTrend(){
   }, 100);
 }
 
-
 function printJsp(){
-  // 지상파 월정액 탭 활성화
   const btn=document.getElementById('tab-jsp');
   showPage('p-jsp',btn);
-  // 차트 resize 후 인쇄 (깨짐 방지)
   setTimeout(()=>{
     Object.values(CHS).forEach(c=>{try{c.resize();}catch(e){}});
     setTimeout(()=>window.print(),300);
   },200);
 }
 
-
 function resetApp(){
-  ['kbs','mbc','sbs','ppv','km'].forEach(k=>{
-    S[k]=null;
-    document.getElementById('fc-'+k).classList.remove('loaded','opt-loaded');
-    document.getElementById('fn-'+k).textContent='';
-  });
+  ['kbs','mbc','sbs','ppv','km'].forEach(k=>{ S[k]=null; });
   document.querySelectorAll('input[type=file]').forEach(i=>i.value='');
   renderChips();
   document.getElementById('gen-btn').classList.remove('ready');
